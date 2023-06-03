@@ -26,6 +26,10 @@ const aspectRatioGenerator = (index) => {
 const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 	const [coordinates, setCoordinates] = useState({ x: 0, y: 0 })
 	const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 })
+	const [canvasDimensions, setCanvasDimensions] = useState({
+		width: 0,
+		height: 0,
+	})
 
 	// set the image width to be the height of the canvas
 	const [imgSpringStyle, api] = useSpring(() => ({
@@ -56,61 +60,130 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				cancel,
 			}) => {
 				if (pinching) return cancel()
+
+				// Get the current image and canvas dimensions
+				const canvasWidth = canvasDimensions.width
+				const canvasHeight = canvasDimensions.height
+				const imgWidth = imgDimensions.width
+				const imgHeight = imgDimensions.height
+
+				// Calculate the boundaries for dragging
+				const minX = Math.min(0, canvasWidth * 0.2 - imgWidth) // At least 20% of the image's width should be within the canvas
+				const minY = Math.min(0, canvasHeight * 0.2 - imgHeight) // At least 20% of the image's height should be within the canvas
+				const maxX = Math.max(0, canvasWidth - canvasWidth * 0.2) // At least 20% of the image's width should be within the canvas
+				const maxY = Math.max(0, canvasHeight - canvasHeight * 0.2) // At least 20% of the image's height should be within the canvas
+
+				// Clamp the drag movement within these boundaries
+				const clampedX = Math.max(
+					minX,
+					Math.min(maxX, coordinates.x + x)
+				)
+				const clampedY = Math.max(
+					minY,
+					Math.min(maxY, coordinates.y + y)
+				)
+
 				api.start({
-					x: coordinates.x + x,
-					y: coordinates.y + y,
+					x: clampedX,
+					y: clampedY,
 					immediate: true,
 				})
 				if (!down && !dragging) {
 					setCoordinates({
-						x: coordinates.x + x,
-						y: coordinates.y + y,
+						x: clampedX,
+						y: clampedY,
 					})
 				}
 			},
-			onPinch: ({ origin: [ox, oy], first, movement: [ms], offset: [s, a], memo, down, pinching }) => {
-                if (first) {
-                    const { width, height, x, y } = imgRef.current.getBoundingClientRect();
-                    const tx = ox - (x + width / 2);
-                    const ty = oy - (y + height / 2);
-                    memo = [imgSpringStyle.x.get(), imgSpringStyle.y.get(), tx, ty, width, height];
-                }
-            
-                const newWidth = imageDimensions.width * s;
-                const newHeight = imageDimensions.height * s;
+			onPinch: ({
+				origin: [ox, oy],
+				first,
+				movement: [ms],
+				offset: [s, a],
+				memo,
+				down,
+				pinching,
+				cancel,
+			}) => {
 
-                console.log('newWidth', newWidth)
-                console.log('newHeight', newHeight)
-            
-                const dx = (newWidth - memo[4]) / 2;
-                const dy = (newHeight - memo[5]) / 2;
-            
-                const x = memo[0] - dx - (ms - 1) * memo[2];
-                const y = memo[1] - dy - (ms - 1) * memo[3];
-            
-                api.start({
-                    width: newWidth,
-                    height: newHeight,
-                    x: x,
-                    y: y,
-                    immediate: true,
-                });
+				console.log(s)
+				if (first) {
+					const { width, height, x, y } =
+						imgRef.current.getBoundingClientRect()
+					const tx = ox - (x + width / 2)
+					const ty = oy - (y + height / 2)
+					memo = [
+						imgSpringStyle.x.get(),
+						imgSpringStyle.y.get(),
+						tx,
+						ty,
+						width,
+						height,
+					]
+				}
 
+				const aspectRatio =
+					imageDimensions.width / imageDimensions.height
 
-                if(!pinching) {
-                    setCoordinates({
-                        x: x,
-                        y: y,
-                    });
+				const canvasWidth = canvasDimensions.width
+				const canvasHeight = canvasDimensions.height
 
-                    setImgDimensions({
-                        width: newWidth,
-                        height: newHeight,
-                    });
-                }
-                
-                return memo;
-            },            
+				const minimumWidth = canvasWidth * 0.2
+				const minimumHeight = canvasHeight * 0.2
+
+				let newHeight
+				let newWidth
+
+				if (aspectRatio > 1) {
+					newHeight =
+						imageDimensions.height * s < minimumHeight
+							? minimumHeight
+							: imageDimensions.height * s
+					newWidth = newHeight * aspectRatio
+				}
+				if (aspectRatio < 1) {
+					newWidth =
+						imageDimensions.width * s < minimumWidth
+							? minimumWidth
+							: imageDimensions.width * s
+					newHeight = newWidth / aspectRatio
+				}
+				if (aspectRatio === 1) {
+					newWidth =
+						imageDimensions.width * s < minimumWidth
+							? minimumWidth
+							: imageDimensions.width * s
+					newHeight = newWidth
+				}
+
+				const dx = (newWidth - memo[4]) / 2
+				const dy = (newHeight - memo[5]) / 2
+
+				const x = memo[0] - dx - (ms - 1) * memo[2]
+				const y = memo[1] - dy - (ms - 1) * memo[3]
+
+				api.start({
+					width: newWidth,
+					height: newHeight,
+					x: x,
+					y: y,
+					immediate: true,
+				})
+
+				if (!pinching) {
+					setCoordinates({
+						x: x,
+						y: y,
+					})
+
+					setImgDimensions({
+						width: newWidth,
+						height: newHeight,
+					})
+				}
+
+				return memo
+			},
 		},
 		{
 			drag: {
@@ -119,15 +192,13 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				preventDefault: true,
 			},
 			pinch: {
-                filterTaps: true,
-                enabled: true,
-                preventDefault: true,
+				filterTaps: true,
+				enabled: true,
+				preventDefault: true,
 			},
 		}
 	)
 
-    console.log('coordinates', coordinates)
-    console.log('imgDimensions', imgDimensions)
 	useEffect(() => {
 		const [widthRatio, heightRatio] = aspectRatioGenerator(aspectRatio)
 			.split('/')
@@ -171,11 +242,11 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 		}
 
 		canvasApi.start({ width, height, config: { duration: 100 } })
+		setCanvasDimensions({ width, height })
 
 		api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
 		setCoordinates({ x: 0, y: 0 })
 	}, [aspectRatio])
-
 
 	// console.log(completedGenerations)
 	return (
@@ -196,8 +267,8 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 					position: 'relative',
 					touchAction: 'none',
 				}}
-                // bind only if imgRef is defined
-                {...bind()}
+				// bind only if imgRef is defined
+				{...bind()}
 			>
 				<animated.img
 					ref={imgRef}
@@ -240,6 +311,20 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				>
 					Width: {imgDimensions.width.toFixed(0)}, Height:{' '}
 					{imgDimensions.height.toFixed(0)}
+				</div>
+				<div
+					style={{
+						position: 'absolute',
+						bottom: 24,
+						left: 24,
+						zIndex: 20,
+						background: 'rgba(255,255,255,0.5)',
+						padding: 10,
+						borderRadius: 10,
+					}}
+				>
+					Canvas Width: {canvasDimensions.width}, height:{' '}
+					{canvasDimensions.height}
 				</div>
 			</animated.div>
 		</div>

@@ -3,10 +3,7 @@ import { createUseGesture, dragAction, pinchAction } from '@use-gesture/react'
 import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 
-// import imgSrc from '../images/profilepic.jpg'
-import imgSrc from '../images/2.jpg'
-// import imgSrc from '../images/ali2.JPG'
-// import widePhoto from '../images/widePhoto.jpg'
+
 import {
 	getUpperTransparent,
 	getLowerTransparent,
