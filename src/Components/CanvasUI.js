@@ -5,7 +5,10 @@ import PromptBox from './PromptBox'
 import SimpleCanvas from './SimpleCanvas'
 import LoadingImg from './LoadingImg';
 
+import { getSquares } from '../lib/get-squares';
+
 import { useState } from 'react';
+import html2canvas from 'html2canvas'
 
 const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDimensions }) => {
     const [aspectRatio, setAspectRatio] = useState(0);
@@ -14,6 +17,60 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
     const loadGeneration = (index) => {
         setIsLoading(true)
     }
+
+    const fillGenerate = async (data) => {
+        if (!data) return console.log('no data')
+
+        const res = await exportImage({ canvaRef: data.canvaRef })
+        const squares = getSquares({
+            ratioHeight: data.data.ratioHeight,
+            ratioWidth: data.data.ratioWidth,
+            canva: data.data.canva,
+            image: data.data.image,
+            squareSize: data.data.squareSize,
+        })
+
+        console.log(res)
+        console.log(data.data)
+        console.log(squares)
+    }
+
+    // https://usefulangle.com/post/353/javascript-canvas-image-upload
+    const exportImage = ({ canvaRef }) => new Promise((resolve, reject) => {
+		const element = canvaRef
+
+		const canvasWidth = element.clientWidth
+		const canvasHeight = element.clientHeight
+
+		html2canvas(element, {
+			backgroundColor: null,
+			logging: true,
+			width: canvasWidth,
+			height: canvasHeight,
+			scale: 1024 / canvasWidth,
+		}).then((canvas) => {
+            const blob = canvas.toBlob(blob => {
+                const file = new File([blob], 'canva-fill-image.png', { type: 'image/png' })
+                resolve(file)
+            })
+
+			// create an 'a' element to download the image
+			// const a = document.createElement('a')
+
+			// // get the image data
+			// const image = canvas.toDataURL('image/png')
+            // console.log(image)
+
+			// // set the href and download attributes for the a element
+			// a.href = image
+			// a.download = 'canvas-image.png'
+
+			// // append the a element to the body and click it to download the image
+			// document.body.appendChild(a)
+			// a.click()
+			// document.body.removeChild(a)
+		})
+	})
 
     return (
         <div>
@@ -43,7 +100,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             {currentTool === 'fill' && (
                 <div>
                     <div style={{ height: 80}}>
-                    {image ? <PromptBox /> : null}
+                    {image ? <PromptBox generate={fillGenerate}/> : null}
                     </div>
                      <div style={{ height: 80}}>
                         <FillControls

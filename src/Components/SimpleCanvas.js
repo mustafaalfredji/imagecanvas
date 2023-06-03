@@ -7,19 +7,39 @@ import { styles } from './styles'
 
 const aspectRatioGenerator = (index) => {
 	if (index === 0) {
-		return '9/16'
+		return {
+			width: 9,
+			height: 16,
+			ratio: '9/16',
+		}
 	}
 	if (index === 1) {
-		return '3/4'
+		return {
+			width: 3,
+			height: 4,
+			ratio: '3/4',
+		}
 	}
 	if (index === 2) {
-		return '1/1'
+		return {
+			width: 1,
+			height: 1,
+			ratio: '1/1',
+		}
 	}
 	if (index === 3) {
-		return '4/3'
+		return {
+			width: 4,
+			height: 3,
+			ratio: '4/3',
+		}
 	}
 	if (index === 4) {
-		return '16/9'
+		return {
+			width: 16,
+			height: 9,
+			ratio: '16/9',
+		}
 	}
 }
 
@@ -30,6 +50,7 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 		width: 0,
 		height: 0,
 	})
+	const ratioInfo = aspectRatioGenerator(aspectRatio)
 
 	// set the image width to be the height of the canvas
 	const [imgSpringStyle, api] = useSpring(() => ({
@@ -106,7 +127,6 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				cancel,
 			}) => {
 
-				console.log(s)
 				if (first) {
 					const { width, height, x, y } =
 						imgRef.current.getBoundingClientRect()
@@ -200,16 +220,13 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 	)
 
 	useEffect(() => {
-		const [widthRatio, heightRatio] = aspectRatioGenerator(aspectRatio)
-			.split('/')
-			.map(Number)
 
-		let width = (widthRatio / heightRatio) * workingHeight
+		let width = (ratioInfo.width / ratioInfo.height) * workingHeight
 		let height = workingHeight
 
 		if (width > window.innerWidth) {
 			width = window.innerWidth
-			height = (heightRatio / widthRatio) * width
+			height = (ratioInfo.height / ratioInfo.width) * width
 		}
 
 		const imageAspectRatio = imageDimensions.width / imageDimensions.height
@@ -248,6 +265,50 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 		setCoordinates({ x: 0, y: 0 })
 	}, [aspectRatio])
 
+	useEffect(() => {
+		const calcedData = {
+			ratioHeight: ratioInfo.height,
+			ratioWidth: ratioInfo.width,
+			squareSize:
+				ratioInfo.width > ratioInfo.height
+					? canvasDimensions.height
+					: canvasDimensions.width,
+			canva: {
+				width: canvasDimensions.width,
+				height: canvasDimensions.height,
+				topLeft: [0, 0],
+				bottomRight: [canvasDimensions.width, canvasDimensions.height],
+			},
+			image: {
+				width: imgDimensions.width,
+				height: imgDimensions.height,
+				topLeft: [
+					coordinates.x < 0 ? 0 : coordinates.x,
+					coordinates.y < 0 ? 0 : coordinates.y,
+				],
+				bottomRight: [
+					coordinates.x + imgDimensions.width > canvasDimensions.width
+						? canvasDimensions.width
+						: coordinates.x + imgDimensions.width,
+
+					coordinates.y + imgDimensions.height > canvasDimensions.height
+						? canvasDimensions.height
+						: coordinates.y + imgDimensions.height,
+				],
+			},
+		}
+
+		const event = new CustomEvent('canva-fill-data', {
+			detail: {
+				data: calcedData,
+				imgRef: imgRef.current,
+				canvaRef: canvasRef.current,
+			},
+		})
+
+		document.dispatchEvent(event)
+	})
+
 	// console.log(completedGenerations)
 	return (
 		<div
@@ -284,7 +345,7 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 					src={image}
 					alt='sss'
 				/>
-				<div
+				{/* <div
 					style={{
 						position: 'absolute',
 						top: 24,
@@ -311,8 +372,8 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				>
 					Width: {imgDimensions.width.toFixed(0)}, Height:{' '}
 					{imgDimensions.height.toFixed(0)}
-				</div>
-				<div
+				</div> */}
+				{/* <div
 					style={{
 						position: 'absolute',
 						bottom: 24,
@@ -325,7 +386,7 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				>
 					Canvas Width: {canvasDimensions.width}, height:{' '}
 					{canvasDimensions.height}
-				</div>
+				</div> */}
 			</animated.div>
 		</div>
 	)
