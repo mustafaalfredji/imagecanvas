@@ -106,6 +106,7 @@ app.post('/fill-squares', async (req, res) => {
 		})
 		console.log('handle square')
 
+		console.log(squarePath)
 		const stream = fs.createReadStream(squarePath)
 		try {
 			const response = await openai.createImageEdit(
@@ -131,24 +132,19 @@ app.post('/fill-squares', async (req, res) => {
 
 		} catch (error) {
 			console.log(error.message)
-			res.status(500).json({
+			res.status(500).send({
 				error: 'There was a problem with the API request.',
 			})
 			break
 		}
 	}
 
-	res.json({
-		url: `http://localhost:8080/image/${path}`,
-		path,
+	res.status(200).send({
+		url: `http://localhost:8080/image/${initialLocalPath}`,
+		path: initialLocalPath,
 		success: true,
 	})
 })
-
-// app.get('/image/:path', (req, res) => {
-// 	const { path } = req.params
-// 	res.download('/file.pdf')
-// })
 
 // app.post('/store-and-fill-image', async (req, res) => {
 // 	const { imageData, textPrompt, yCoordinates } = req.body
