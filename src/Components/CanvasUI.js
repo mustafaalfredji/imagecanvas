@@ -31,6 +31,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
                     image={image}
                     currentTool={currentTool}
                     aspectRatio={aspectRatio}
+                    setAspectRatio={setAspectRatio}
                     workingHeight={workingAreaHeight - 160}
                     imageDimensions={imageDimensions}
                 />

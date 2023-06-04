@@ -23,7 +23,14 @@ const aspectRatioGenerator = (index) => {
 	}
 }
 
-const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
+const Canvas = ({
+	aspectRatio,
+	image,
+	workingHeight,
+	imageDimensions,
+	setAspectRatio,
+	currentTool,
+}) => {
 	const [coordinates, setCoordinates] = useState({ x: 0, y: 0 })
 	const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 })
 	const [canvasDimensions, setCanvasDimensions] = useState({
@@ -105,7 +112,6 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 				pinching,
 				cancel,
 			}) => {
-
 				console.log(s)
 				if (first) {
 					const { width, height, x, y } =
@@ -188,12 +194,12 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 		{
 			drag: {
 				filterTaps: true,
-				enabled: true,
+				enabled: currentTool === 'fill',
 				preventDefault: true,
 			},
 			pinch: {
 				filterTaps: true,
-				enabled: true,
+				enabled: currentTool === 'fill',
 				preventDefault: true,
 			},
 		}
@@ -247,6 +253,59 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions }) => {
 		api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
 		setCoordinates({ x: 0, y: 0 })
 	}, [aspectRatio])
+
+	useEffect(() => {
+		// if the tool is not fill then the canvas should be the same size as the image and should leverage the full workingHeight and window.innerWidth
+		if (currentTool !== 'fill') {
+		const imageAspectRatio = imageDimensions.width / imageDimensions.height;
+		const canvasAspectRatio = window.innerWidth / workingHeight;
+
+		let width = workingHeight * imageAspectRatio;
+		let height = workingHeight
+
+		if (width > window.innerWidth) {
+			width = window.innerWidth
+			height = (1 / imageAspectRatio) * width
+		}
+
+		if (imageAspectRatio > canvasAspectRatio) {
+			// image is wider than canvas, so set width to canvas width
+			api.start({
+				width: width,
+				height: width / imageAspectRatio,
+				config: { duration: 100 },
+			})
+
+			setImgDimensions({
+				width: width,
+				height: width / imageAspectRatio,
+			})
+		} else {
+			// image is taller than canvas, so set height to canvas height
+			api.start({
+				width: height * imageAspectRatio,
+				height: height,
+				config: { duration: 100 },
+			})
+
+			setImgDimensions({
+				width: height * imageAspectRatio,
+				height: height,
+			})
+		}
+
+		canvasApi.start({ width, height, config: { duration: 100 } })
+		setCanvasDimensions({ width, height })
+
+		api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
+		setCoordinates({ x: 0, y: 0 })
+	}
+
+		if(currentTool === 'fill') {
+			setAspectRatio(1)
+			setAspectRatio(0)
+		}
+	}, [currentTool])
 
 	// console.log(completedGenerations)
 	return (
