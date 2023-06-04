@@ -9,6 +9,21 @@ import { getSquares } from '../lib/get-squares';
 
 import { useState } from 'react';
 import html2canvas from 'html2canvas'
+import axios from 'axios';
+
+const callApi = async ({ imageData, squares, scale }) => {
+    const response = await axios.post('http://localhost:8080/fill-squares', {
+        imageData,
+        squares,
+        scale,
+        textPrompt: 'A realistic, high resolution image in the style award winning 4k photography, and images from instagram'
+    });
+
+    const data = response.data;
+
+    console.log(data)
+    return data.url
+}
 
 const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDimensions }) => {
     const [aspectRatio, setAspectRatio] = useState(0);
@@ -21,7 +36,9 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
     const fillGenerate = async (data) => {
         if (!data) return console.log('no data')
 
-        const res = await exportImage({ canvaRef: data.canvaRef })
+        const { image, scale } = await exportImage({
+            canvaRef: data.canvaRef,
+        })
         const squares = getSquares({
             ratioHeight: data.data.ratioHeight,
             ratioWidth: data.data.ratioWidth,
@@ -30,9 +47,14 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             squareSize: data.data.squareSize,
         })
 
-        console.log(res)
-        console.log(data.data)
-        console.log(squares)
+
+        await callApi({
+            imageData: image,
+            squares: squares,
+            scale: scale,
+        })
+
+        console.log(JSON.stringify(squares))
     }
 
     // https://usefulangle.com/post/353/javascript-canvas-image-upload
@@ -42,33 +64,20 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
 		const canvasWidth = element.clientWidth
 		const canvasHeight = element.clientHeight
 
+        const scale = 1024 / (canvasWidth < canvasHeight ? canvasWidth : canvasHeight)
 		html2canvas(element, {
 			backgroundColor: null,
 			logging: true,
 			width: canvasWidth,
 			height: canvasHeight,
-			scale: 1024 / canvasWidth,
+			scale,
 		}).then((canvas) => {
-            const blob = canvas.toBlob(blob => {
-                const file = new File([blob], 'canva-fill-image.png', { type: 'image/png' })
-                resolve(file)
+			// get the image data
+			const image = canvas.toDataURL('image/png')
+            resolve({
+                image,
+                scale,
             })
-
-			// create an 'a' element to download the image
-			// const a = document.createElement('a')
-
-			// // get the image data
-			// const image = canvas.toDataURL('image/png')
-            // console.log(image)
-
-			// // set the href and download attributes for the a element
-			// a.href = image
-			// a.download = 'canvas-image.png'
-
-			// // append the a element to the body and click it to download the image
-			// document.body.appendChild(a)
-			// a.click()
-			// document.body.removeChild(a)
 		})
 	})
 
