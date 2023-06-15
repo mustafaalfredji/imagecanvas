@@ -28,10 +28,9 @@ const callApi = async ({ imageData, squares, scale }) => {
 const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDimensions }) => {
     const [aspectRatio, setAspectRatio] = useState(0);
     const [isLoading, setIsLoading] = useState(false)
+    const [loadingImg, setLoadingImg ] = useState('')
 
-    const loadGeneration = (index) => {
-        setIsLoading(true)
-    }
+    const [squares, setSquares] = useState([])
 
     const fillGenerate = async (data) => {
         if (!data) return console.log('no data')
@@ -39,7 +38,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
         const { image, scale } = await exportImage({
             canvaRef: data.canvaRef,
         })
-        const squares = getSquares({
+        const newSquares = getSquares({
             ratioHeight: data.data.ratioHeight,
             ratioWidth: data.data.ratioWidth,
             canva: data.data.canva,
@@ -47,14 +46,22 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             squareSize: data.data.squareSize,
         })
 
+        console.log( 'squares', newSquares)
+        setSquares(newSquares)
 
-        await callApi({
+        setLoadingImg(image)
+        setIsLoading(true)
+
+        const newImg = await callApi({
             imageData: image,
-            squares: squares,
+            squares: newSquares,
             scale: scale,
         })
 
-        console.log(JSON.stringify(squares))
+        setLoadingImg(newImg.url)
+
+        console.log(newImg.url)
+        // console.log(JSON.stringify(squares))
     }
 
     // https://usefulangle.com/post/353/javascript-canvas-image-upload
@@ -86,7 +93,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             {isLoading && (
                  <div style={{ position: 'fixed', top: 0, bottom: 0, right: 0, left: 0, zIndex: 11 }}>
                     <LoadingImg
-                        img={'https://images.pexels.com/photos/5230612/pexels-photo-5230612.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'}
+                        img={loadingImg ? loadingImg : ''}
                         aspectRatio={aspectRatio}
                     />
                 </div>
@@ -99,6 +106,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
                     aspectRatio={aspectRatio}
                     workingHeight={workingAreaHeight - 160}
                     imageDimensions={imageDimensions}
+                    squares={squares}
                 />
             ) : (
                 <CanvasEmpty clickUpload={clickUpload} />

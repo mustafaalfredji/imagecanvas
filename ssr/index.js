@@ -3,6 +3,10 @@ const { Configuration, OpenAIApi } = require('openai')
 const fs = require('fs')
 const path = require('path')
 
+
+const imagemin = require('imagemin');
+const imageminPngquant = require('imagemin-pngquant');
+
 const cors = require('cors')
 const axios = require('axios')
 
@@ -15,6 +19,8 @@ const app = express()
 app.use(cors()) // Use CORS middleware
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
+app.use('/image', express.static('temp-images'));
+
 
 const openai = new OpenAIApi(new Configuration({
 	apiKey: process.env.OPENAI_API_KEY,
@@ -24,36 +30,35 @@ const getUniqueId = () => {
 	return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 }
 
-const handleSquare = async ({ img, topLeft, bottomRight, scale }) => new Promise((resolve, reject) => {
-	// Calculate width and height of the square
-	let width = 1024;
-	let height = 1024;
 
-	console.log(topLeft, bottomRight)
-	console.log({
-		left: Math.round(topLeft[0] * scale),
-		top: Math.round(topLeft[1] * scale),
-		width: Math.round(width),
-		height: Math.round(height),
-	})
-	const outputPath = `temp-images/square-image-${getUniqueId()}.png`
+const handleSquare = async ({ img, topLeft, bottomRight, scale }) => new Promise((resolve, reject) => {
+    // Calculate width and height of the square
+    const width = Math.round((bottomRight[0] - topLeft[0]) * scale);
+    const height = Math.round((bottomRight[1] - topLeft[1]) * scale);
+
+    console.log('handling square image' + img)
+
+    const outputPath = `temp-images/square-image-${getUniqueId()}.png`
+
     sharp(img)
         .extract({
             left: Math.round(topLeft[0] * scale),
             top: Math.round(topLeft[1] * scale),
-            width: Math.round(width),
-            height: Math.round(height),
+            width: width,
+            height: height,
         })
-		.resize(width, height)
-		.png() // Ensure the output is in PNG format
+        .resize(1024, 1024) // Resize the output to 1024x1024
+		.png()
         .toFile(outputPath, function(err) {
-			// Log any errors
-			if(err) {
-				reject(err)
-			} else {
-				resolve(outputPath)
-			}
-		})
+            // Log any errors
+            if(err) {
+                reject(err)
+            } else {
+                resolve(outputPath)
+            }
+        })
+
+    console.log('handled square image', outputPath)
 })
 
 const mergeImages = ({ newImage, currentImage, topLeft, bottomRight, scale }) => new Promise((resolve, reject) => {
@@ -62,6 +67,7 @@ const mergeImages = ({ newImage, currentImage, topLeft, bottomRight, scale }) =>
 
 	const outputPath = `temp-images/merge-image-${getUniqueId()}.png`
 
+	console.log('merging images' + newImage + ' ' + currentImage)
 	sharp(newImage) // This is your new image
 		.resize(width, height)
 		.toBuffer() // Convert the new image to a Buffer for overlaying
@@ -74,7 +80,7 @@ const mergeImages = ({ newImage, currentImage, topLeft, bottomRight, scale }) =>
 						left: Math.round(topLeft[0] * scale),
 					}
 				])
-				.png()
+				.png() // Ensure the output is in PNG format
 				.toFile(outputPath, function(err) { // Save the resulting image
 					// Log any errors
 					if(err) {
@@ -87,6 +93,8 @@ const mergeImages = ({ newImage, currentImage, topLeft, bottomRight, scale }) =>
 		.catch(err => {
 			reject(err)
 		});
+
+	console.log('merged images', outputPath)
 })
 
 app.post('/fill-squares', async (req, res) => {
@@ -97,6 +105,7 @@ app.post('/fill-squares', async (req, res) => {
 	let initialLocalPath = `temp-images/canvas-image-${getUniqueId()}.png`
 	await fs.writeFileSync(initialLocalPath, base64Data, 'base64')
 
+	console.log('squares', squares)
 	for (let i = 0; i < squares.length; i++) {
 		const square = squares[i]
 		const squarePath = await handleSquare({
@@ -104,11 +113,14 @@ app.post('/fill-squares', async (req, res) => {
 			img: initialLocalPath,
 			scale,
 		})
-		console.log('handle square')
 
-		console.log(squarePath)
+		// await for 2000ms the file to be written to disk before calling the api
+		await new Promise(resolve => setTimeout(resolve, 2000));
+
 		const stream = fs.createReadStream(squarePath)
+
 		try {
+			console.log('calling openai api')
 			const response = await openai.createImageEdit(
 				stream,
 				textPrompt,
@@ -117,8 +129,11 @@ app.post('/fill-squares', async (req, res) => {
 				'1024x1024',
 				'b64_json',
 			)
+			console.log('openai api response')
 			const data = response.data
 			const localPath = `temp-images/openai-image-${getUniqueId()}.png`
+
+			console.log('writing file to disk' + localPath)
 			await fs.writeFileSync(localPath, data.data[0].b64_json, 'base64')
 
 			const newInitialLocalPath = await mergeImages({
@@ -131,16 +146,22 @@ app.post('/fill-squares', async (req, res) => {
 			initialLocalPath = newInitialLocalPath
 
 		} catch (error) {
-			console.log(error.message)
-			res.status(500).send({
-				error: 'There was a problem with the API request.',
-			})
+			if (error.response) {
+				console.log(error.response.status);
+				console.log(error.response.data.error.message);
+				res.status(500).send({
+					error: error.response.data.error.message,
+				})
+			  } else {
+				console.log(error.message);
+			  }
+			
 			break
 		}
 	}
 
 	res.status(200).send({
-		url: `http://localhost:8080/image/${initialLocalPath}`,
+		url: `http://localhost:8080/image/${path.basename(initialLocalPath)}`,
 		path: initialLocalPath,
 		success: true,
 	})
