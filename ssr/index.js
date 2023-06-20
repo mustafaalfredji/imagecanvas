@@ -4,8 +4,6 @@ const fs = require('fs')
 const path = require('path')
 
 
-const imagemin = require('imagemin');
-const imageminPngquant = require('imagemin-pngquant');
 
 const cors = require('cors')
 const axios = require('axios')
