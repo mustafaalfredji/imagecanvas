@@ -1,3 +1,5 @@
+import {ReactComponent as UploadIcon} from '../resources/upload.svg'
+
 const CanvasEmpty = ({ clickUpload }) => {
 	return (
 		<div
@@ -19,12 +21,22 @@ const CanvasEmpty = ({ clickUpload }) => {
                     width: '100%',
                     display: 'flex',
                     borderRadius: 16,
+					flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     filter: 'drop-shadow(0px 0px 14px rgba(0, 0, 0, 0.25))'
 				}}
 			>
+				<UploadIcon
+					style={{
+						height: 48,
+						width: 48,
+					}}
+				/>
+				<p>
 				Upload Image
+
+				</p>
 			</div>
 		</div>
 	)

@@ -1,3 +1,7 @@
+import FillIcon from '../resources/fill.js'
+import RemoveIcon from '../resources/remove.js'
+import AddIcon from '../resources/add.js'
+
 const styles = {
 	wrapper: {
 		background: '#fff',
@@ -5,7 +9,7 @@ const styles = {
 		display: 'flex',
 		alignItems: 'center',
 		justifyContent: 'space-evenly',
-        borderTop: '1px solid #E5E5E5',
+		borderTop: '1px solid #E5E5E5',
 	},
 	footerItem: {
 		height: 80,
@@ -13,10 +17,10 @@ const styles = {
 		alignItems: 'center',
 		justifyContent: 'center',
 		color: '#2772FF',
-		fontSize: 14,
+		fontSize: 16,
 		fontWeight: 600,
 		cursor: 'pointer',
-        width: '20%',
+		width: '20%',
 	},
 }
 
@@ -30,7 +34,10 @@ const Footer = ({ currentTool, setCurrentTool }) => {
 					color: currentTool === 'fill' ? '#2772FF' : '#A8B0C0',
 				}}
 			>
-				Fill
+				<FillIcon
+					color={currentTool === 'fill' ? '#2772FF' : '#A8B0C0'}
+				/>
+				<span style={{ marginLeft: 8 }}>Fill</span>
 			</div>
 
 			<div
@@ -40,7 +47,10 @@ const Footer = ({ currentTool, setCurrentTool }) => {
 					color: currentTool === 'erase' ? '#2772FF' : '#A8B0C0',
 				}}
 			>
-				Erase
+				<RemoveIcon
+					color={currentTool === 'erase' ? '#2772FF' : '#A8B0C0'}
+				/>
+				<span style={{ marginLeft: 8 }}>Erase</span>
 			</div>
 
 			<div
@@ -50,7 +60,10 @@ const Footer = ({ currentTool, setCurrentTool }) => {
 					color: currentTool === 'add' ? '#2772FF' : '#A8B0C0',
 				}}
 			>
-				Add
+				<AddIcon
+					color={currentTool === 'add' ? '#2772FF' : '#A8B0C0'}
+				/>
+				<span style={{ marginLeft: 8 }}>Add</span>
 			</div>
 		</div>
 	)
