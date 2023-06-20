@@ -306,13 +306,17 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 					height: workingHeight,
 				})
 			}
+			setCoordinates({
+				x: 0,
+				y: 0,
+			})
 		}
 
 	}, [currentTool])
 
 	useEffect(() => {
 		if (currentTool === 'fill') {
-			let width = (ratioInfo.width / ratioInfo.height) * workingHeight
+		let width = (ratioInfo.width / ratioInfo.height) * workingHeight
 		let height = workingHeight
 
 		if (width > window.innerWidth) {
