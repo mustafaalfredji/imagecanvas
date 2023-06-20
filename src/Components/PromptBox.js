@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 const styles = {
 	wrapper: {
 		width: '100%',
@@ -36,6 +38,19 @@ const styles = {
 }
 
 const PromptBox = ({ textPrompt, setTextPrompt, generate }) => {
+    const [canvaFillData, setCanvaFillData] = useState(null)
+
+    const handleFillData = (e) => {
+        setCanvaFillData(e.detail)
+    }
+    useEffect(() => {
+        document.addEventListener('canva-fill-data',handleFillData, false)
+
+        return () => {
+            document.removeEventListener('canva-fill-data', handleFillData, false)
+        }
+    }, [])
+
 	return (
 		<div style={styles.wrapper}>
 			<div style={styles.inputWrapper}>
@@ -48,7 +63,7 @@ const PromptBox = ({ textPrompt, setTextPrompt, generate }) => {
 				/>
 				<button
                     style={styles.button}
-                    onClick={generate}
+                    onClick={() => generate(canvaFillData)}
                     >Fill</button>
 			</div>
 		</div>
