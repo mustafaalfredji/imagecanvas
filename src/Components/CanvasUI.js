@@ -11,12 +11,12 @@ import { useState } from 'react';
 import html2canvas from 'html2canvas'
 import axios from 'axios';
 
-const callApi = async ({ imageData, squares, scale }) => {
+const callApi = async ({ imageData, squares, scale, prompt }) => {
     const response = await axios.post('http://localhost:8080/fill-squares', {
         imageData,
         squares,
         scale,
-        textPrompt: 'A realistic, high resolution image in the style award winning 4k photography, and images from instagram'
+        textPrompt: prompt.length ? prompt : 'A realistic, high resolution image in the style award winning 4k photography, and images from instagram'
     });
 
     const data = response.data;
@@ -29,6 +29,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
     const [aspectRatio, setAspectRatio] = useState(0);
     const [isLoading, setIsLoading] = useState(false)
     const [loadingImg, setLoadingImg ] = useState('')
+    const [textPrompt, setTextPrompt] = useState('')
 
     const [squares, setSquares] = useState([])
 
@@ -46,7 +47,6 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             squareSize: data.data.squareSize,
         })
 
-        console.log( 'squares', newSquares)
         setSquares(newSquares)
 
         setLoadingImg(image)
@@ -56,6 +56,7 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             imageData: image,
             squares: newSquares,
             scale: scale,
+            prompt: textPrompt,
         })
 
         setLoadingImg(newImg.url)
@@ -117,7 +118,14 @@ const CanvasUI = ({ image, clickUpload, currentTool, workingAreaHeight, imageDim
             {currentTool === 'fill' && (
                 <div>
                     <div style={{ height: 80}}>
-                    {image ? <PromptBox generate={fillGenerate}/> : null}
+                    {image
+                        ? <PromptBox
+                        generate={fillGenerate}
+                        textPrompt={textPrompt}
+                        setTextPrompt={setTextPrompt}
+                        />
+                        : null
+                        }
                     </div>
                      <div style={{ height: 80}}>
                         <FillControls

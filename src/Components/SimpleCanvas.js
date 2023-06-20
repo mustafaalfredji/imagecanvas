@@ -51,7 +51,7 @@ const randomizeColorRGB = () => {
 	return `rgb(${r}, ${g}, ${b})`
 }
 
-const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares }) => {
+const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, currentTool }) => {
 	const [coordinates, setCoordinates] = useState({ x: 0, y: 0 })
 	const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 })
 	const [canvasDimensions, setCanvasDimensions] = useState({
@@ -216,20 +216,103 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares })
 		{
 			drag: {
 				filterTaps: true,
-				enabled: true,
+				enabled: currentTool === 'fill',
 				preventDefault: true,
 			},
 			pinch: {
 				filterTaps: true,
-				enabled: true,
+				enabled: currentTool === 'fill',
 				preventDefault: true,
 			},
 		}
 	)
 
 	useEffect(() => {
+		if(currentTool === 'erase' || currentTool === 'add') {
+			const imageAspectRatio = imageDimensions.width / imageDimensions.height
 
-		let width = (ratioInfo.width / ratioInfo.height) * workingHeight
+			// if image is wider than it is tall
+			if (imageAspectRatio > 1) {
+				// set canvas width to window width
+				canvasApi.start({
+					width: window.innerWidth,
+					height: window.innerWidth / imageAspectRatio,
+					config: { duration: 100 },
+				})
+				setCanvasDimensions({
+					width: window.innerWidth,
+					height: window.innerWidth / imageAspectRatio,
+				})
+				api.start({
+					width: window.innerWidth,
+					height: window.innerWidth / imageAspectRatio,
+					x: 0,
+					y: 0,
+					config: { duration: 100 },
+				})
+				setImgDimensions({
+					width: window.innerWidth,
+					height: window.innerWidth / imageAspectRatio,
+				})
+			}
+			// if image is a square
+			if (imageAspectRatio === 1) {
+				// set canvas width to window width
+				canvasApi.start({
+					width: window.innerWidth,
+					height: window.innerWidth,
+					config: { duration: 100 },
+				})
+				api.start({
+					width: window.innerWidth,
+					height: window.innerWidth,
+					x: 0,
+					y: 0,
+					config: { duration: 100 },
+				})
+
+				setImgDimensions({
+					width: window.innerWidth,
+					height: window.innerWidth,
+				})
+				setCanvasDimensions({
+					width: window.innerWidth,
+					height: window.innerWidth,
+				})
+
+			}
+			// if image is taller than it is wide
+			if (imageAspectRatio < 1) {
+				// set canvas height to window height
+				canvasApi.start({
+					width: workingHeight * imageAspectRatio,
+					height: workingHeight,
+					config: { duration: 100 },
+				})
+				api.start({
+					width: workingHeight * imageAspectRatio,
+					height: workingHeight,
+					x: 0,
+					y: 0,
+					config: { duration: 100 },
+				})
+				setImgDimensions({
+					width: workingHeight * imageAspectRatio,
+					height: workingHeight,
+				})
+
+				setCanvasDimensions({
+					width: workingHeight * imageAspectRatio,
+					height: workingHeight,
+				})
+			}
+		}
+
+	}, [currentTool])
+
+	useEffect(() => {
+		if (currentTool === 'fill') {
+			let width = (ratioInfo.width / ratioInfo.height) * workingHeight
 		let height = workingHeight
 
 		if (width > window.innerWidth) {
@@ -271,7 +354,8 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares })
 
 		api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
 		setCoordinates({ x: 0, y: 0 })
-	}, [aspectRatio])
+		}
+	}, [aspectRatio, currentTool])
 
 	useEffect(() => {
 		const calcedData = {

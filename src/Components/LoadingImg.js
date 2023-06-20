@@ -22,6 +22,7 @@ const styles = {
 		width: 'calc(100% - 48px)',
 		boxShadow: '0px 0px 30px rgba(0, 0, 0, 0.25)',
 		borderRadius: '10px',
+		backgroundImage: 'url("https://www.transparenttextures.com/patterns/az-subtle.png")',
         zIndex: 12,
 	},
     background: {
