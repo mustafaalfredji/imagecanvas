@@ -1,6 +1,12 @@
 import { useSpring, animated } from '@react-spring/web'
 import { createUseGesture, dragAction, pinchAction } from '@use-gesture/react'
-import { forwardRef, useEffect, useRef, useState, useImperativeHandle } from 'react'
+import {
+	forwardRef,
+	useEffect,
+	useRef,
+	useState,
+	useImperativeHandle,
+} from 'react'
 
 import './canvas.css'
 import { styles } from './styles'
@@ -51,17 +57,14 @@ const randomizeColorRGB = () => {
 }
 
 const Canvas = forwardRef((props, ref) => {
-
-	const { aspectRatio,
+	const {
+		aspectRatio,
 		image,
 		workingHeight,
 		imageDimensions,
 		squares,
 		currentTool,
-		setUndoHistory,
-		undoHistory,
-		history,
-		setHistory
+		setHistory,
 	} = props
 
 	const [coordinates, setCoordinates] = useState({ x: 0, y: 0 })
@@ -150,7 +153,6 @@ const Canvas = forwardRef((props, ref) => {
 				pinching,
 				cancel,
 			}) => {
-
 				if (currentTool === 'fill') {
 					if (first) {
 						const { width, height, x, y } =
@@ -166,19 +168,19 @@ const Canvas = forwardRef((props, ref) => {
 							height,
 						]
 					}
-	
+
 					const aspectRatio =
 						imageDimensions.width / imageDimensions.height
-	
+
 					const canvasWidth = canvasDimensions.width
 					const canvasHeight = canvasDimensions.height
-	
+
 					const minimumWidth = canvasWidth * 0.2
 					const minimumHeight = canvasHeight * 0.2
-	
+
 					let newHeight
 					let newWidth
-	
+
 					if (aspectRatio > 1) {
 						newHeight =
 							imageDimensions.height * s < minimumHeight
@@ -200,13 +202,13 @@ const Canvas = forwardRef((props, ref) => {
 								: imageDimensions.width * s
 						newHeight = newWidth
 					}
-	
+
 					const dx = (newWidth - memo[4]) / 2
 					const dy = (newHeight - memo[5]) / 2
-	
+
 					const x = memo[0] - dx - (ms - 1) * memo[2]
 					const y = memo[1] - dy - (ms - 1) * memo[3]
-	
+
 					api.start({
 						width: newWidth,
 						height: newHeight,
@@ -214,36 +216,36 @@ const Canvas = forwardRef((props, ref) => {
 						y: y,
 						immediate: true,
 					})
-	
+
 					if (!pinching) {
 						setCoordinates({
 							x: x,
 							y: y,
 						})
-	
+
 						setImgDimensions({
 							width: newWidth,
 							height: newHeight,
 						})
 					}
-	
+
 					return memo
 				}
 
 				// if (currentTool === 'erase' || currentTool === 'add') {
 
 				// 	const dampingFactor = 0.9; // change this value as needed
-			
+
 				// 	// scale the canvas on pinch, scale can never be less than 1
 				// 	const newScale = 1 * s * dampingFactor;
 				// 	if (newScale < 1) return cancel()
-			
+
 				// 	canvasApi.start({
 				// 		scale: newScale,
 				// 		immediate: true,
 				// 	})
 				// }
-			}
+			},
 		},
 		{
 			drag: {
@@ -265,20 +267,14 @@ const Canvas = forwardRef((props, ref) => {
 			const imageAspectRatio =
 				imageDimensions.width / imageDimensions.height
 
-			setHistory([])
-			setUndoHistory([])
-
 			const workingAreaAspectRatio = window.innerWidth / workingHeight
 
-			const mask = maskRef.current;
-			const context = mask.getContext('2d');
-			
+			const mask = maskRef.current
+			const context = mask.getContext('2d')
+
 			// Set some initial properties. You can change these as you like.
-			context.strokeStyle = "#000000";
-			context.lineWidth = 2;
-		  
-			// Save the initial state of the canvas to the history
-			setHistory([context.getImageData(0, 0, mask.width, mask.height)]);
+			context.strokeStyle = '#000000'
+			context.lineWidth = 2
 
 			// if image is wider than it is tall
 			if (imageAspectRatio > 1) {
@@ -302,8 +298,8 @@ const Canvas = forwardRef((props, ref) => {
 					width: window.innerWidth,
 					height: window.innerWidth / imageAspectRatio,
 				})
-				mask.width = window.innerWidth;
-				mask.height = window.innerWidth / imageAspectRatio;
+				mask.width = window.innerWidth
+				mask.height = window.innerWidth / imageAspectRatio
 			}
 			// if image is a square
 			if (imageAspectRatio === 1) {
@@ -329,8 +325,8 @@ const Canvas = forwardRef((props, ref) => {
 					width: window.innerWidth,
 					height: window.innerWidth,
 				})
-				mask.width = window.innerWidth;
-				mask.height = window.innerWidth;
+				mask.width = window.innerWidth
+				mask.height = window.innerWidth
 			}
 			// if image is taller than it is wide
 			if (imageAspectRatio < 1) {
@@ -352,13 +348,13 @@ const Canvas = forwardRef((props, ref) => {
 						width: window.innerWidth,
 						height: window.innerWidth / imageAspectRatio,
 					})
-	
+
 					setCanvasDimensions({
 						width: window.innerWidth,
 						height: window.innerWidth / imageAspectRatio,
 					})
-					mask.width = window.innerWidth;
-					mask.height = window.innerWidth / imageAspectRatio;
+					mask.width = window.innerWidth
+					mask.height = window.innerWidth / imageAspectRatio
 				}
 
 				// if imageAspectRatio is shorter than workingAreaAspectRatio then set canvas width to window width and height to window width / workingAreaAspectRatio
@@ -379,31 +375,28 @@ const Canvas = forwardRef((props, ref) => {
 						width: workingHeight * imageAspectRatio,
 						height: workingHeight,
 					})
-	
+
 					setCanvasDimensions({
 						width: workingHeight * imageAspectRatio,
 						height: workingHeight,
 					})
-					mask.width = workingHeight * imageAspectRatio;
-					mask.height = workingHeight;
+					mask.width = workingHeight * imageAspectRatio
+					mask.height = workingHeight
 				}
 			}
 			setCoordinates({
 				x: 0,
 				y: 0,
 			})
+			setHistory([])
 		}
 	}, [currentTool])
-
-
 
 	// Manage image dimensions to adjust to the current aspect ratio and working height when you change the current tool to fill
 	useEffect(() => {
 		if (currentTool === 'fill') {
 			let width = (ratioInfo.width / ratioInfo.height) * workingHeight
 			let height = workingHeight
-			setHistory([])
-			setUndoHistory([])
 
 			if (width > window.innerWidth) {
 				width = window.innerWidth
@@ -493,66 +486,129 @@ const Canvas = forwardRef((props, ref) => {
 		document.dispatchEvent(event)
 	})
 
-
 	// masking and drawing management
 	const startDrawing = (event) => {
-		const canvas = maskRef.current;
-		const context = canvas.getContext('2d');
-	  
-		context.fillStyle = "rgba(255, 0, 0, 0.5)";  // Semi-transparent red
-
-		const rect = canvas.getBoundingClientRect();
-		const x = event.touches[0].clientX - rect.left;
-		const y = event.touches[0].clientY - rect.top;
-		
-		context.beginPath();
-		context.arc(x, y, 5, 0, Math.PI * 2, true); // 5 is the radius of the circle
-		context.fill();
-		setIsDrawing(true);
-	  }
-	  
-	  
-	  const draw = (event) => {
-		const canvas = maskRef.current;
-		const context = canvas.getContext('2d');
-	  
-		context.fillStyle = "rgba(255, 0, 0, 0.6)";  // Semi-transparent red
-
-		if (!isDrawing) return;
-	  
-		const rect = canvas.getBoundingClientRect();
-		const x = event.touches[0].clientX - rect.left;
-		const y = event.touches[0].clientY - rect.top;
-		
-		context.beginPath();
-		context.arc(x, y, 8, 0, Math.PI * 2, true); // 5 is the radius of the circle
-		context.fill();
-	  }
-
-
-	  const finishDrawing = () => {
-		setIsDrawing(false);
-	  
-		// Save the current image data to the history array when finished drawing
 		const canvas = maskRef.current
 		const context = canvas.getContext('2d')
-		setHistory([...history, context.getImageData(0, 0, canvas.width, canvas.height)]);
-	  
-		// Clear the redo history whenever a new action is performed
-		setUndoHistory([]);
-	  }
+
+		context.fillStyle = 'rgba(255, 0, 0, 0.5)' // Semi-transparent red
+
+		const rect = canvas.getBoundingClientRect()
+		const x = event.touches[0].clientX - rect.left
+		const y = event.touches[0].clientY - rect.top
+
+		context.beginPath()
+		context.arc(x, y, 8, 0, Math.PI * 2, true) // 5 is the radius of the circle
+		context.fill()
+		setIsDrawing(true)
+	}
+
+	const draw = (event) => {
+		const canvas = maskRef.current
+		const context = canvas.getContext('2d')
+
+		context.fillStyle = 'rgba(255, 0, 0, 0.6)' // Semi-transparent red
+
+		if (!isDrawing) return
+
+		const rect = canvas.getBoundingClientRect()
+		const x = event.touches[0].clientX - rect.left
+		const y = event.touches[0].clientY - rect.top
+
+		context.beginPath()
+		context.arc(x, y, 8, 0, Math.PI * 2, true) // 5 is the radius of the circle
+		context.fill()
+	}
+
+	const finishDrawing = () => {
+		setIsDrawing(false)
+		setHistory([''])
+	}
 
 	useImperativeHandle(ref, () => ({
-		restoreImage: (imageData) => {
-		  try {
-			const context = maskRef.current.getContext('2d');
-			context.putImageData(imageData, 0, 0);
-		  } catch (error) {
-			console.error("Error restoring image data", error);
-		  }
-		}
-	  }));
+		restoreImage: () => {
+			try {
+				const context = maskRef.current.getContext('2d')
+				// create an empty imageData object
+				const newImageData = context.createImageData(
+					maskRef.current.width,
+					maskRef.current.height
+				)
 
+				context.putImageData(newImageData, 0, 0)
+				setHistory([])
+			} catch (error) {
+				console.error('Error restoring image data', error)
+			}
+		},
+		exportCanvas: () => {
+			console.log('exporting canvas')
+
+			const originalCanvas = maskRef.current
+			const originalContext = originalCanvas.getContext('2d')
+
+			// Get the image data from the original canvas
+			const originalImageData = originalContext.getImageData(
+				0,
+				0,
+				originalCanvas.width,
+				originalCanvas.height
+			)
+			const originalData = originalImageData.data
+
+			// Create a temporary canvas and fill it with black
+			const tempCanvas = document.createElement('canvas')
+			tempCanvas.width = originalCanvas.width
+			tempCanvas.height = originalCanvas.height
+			const tempContext = tempCanvas.getContext('2d')
+			tempContext.fillStyle = 'black'
+			tempContext.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+
+			// Get the image data from the temporary canvas
+			const tempImageData = tempContext.getImageData(
+				0,
+				0,
+				tempCanvas.width,
+				tempCanvas.height
+			)
+			const tempData = tempImageData.data
+
+			// Loop over each pixel in the original image data
+			for (let i = 0; i < originalData.length; i += 4) {
+				if (originalData[i + 3] !== 0) {
+					// If the pixel is not transparent (it's part of a drawing), make the corresponding pixel white in the temporary canvas
+					tempData[i] = 255
+					tempData[i + 1] = 255
+					tempData[i + 2] = 255
+					tempData[i + 3] = 255
+
+				}
+			}
+
+			// Put the modified image data back into the temporary canvas
+			tempContext.putImageData(tempImageData, 0, 0)
+
+			// Export the temporary canvas
+			const imageUrl = tempCanvas.toDataURL('image/png')
+			const link = document.createElement('a')
+			link.href = imageUrl
+			link.download = 'canvas.png'
+			link.click()
+
+			// export image from animated.img with the ref imgRef
+			const img = imgRef.current
+			const imgCanvas = document.createElement('canvas')
+			imgCanvas.width = canvasDimensions.width
+			imgCanvas.height = canvasDimensions.height
+			const imgContext = imgCanvas.getContext('2d')
+			imgContext.drawImage(img, 0, 0, imgCanvas.width, imgCanvas.height);
+			const imgData = imgCanvas.toDataURL('image/png')
+			const imgLink = document.createElement('a')
+			imgLink.href = imgData
+			imgLink.download = 'image.png'
+			imgLink.click()
+		},
+	}))
 
 	// console.log(completedGenerations)
 	return (

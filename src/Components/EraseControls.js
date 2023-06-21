@@ -41,7 +41,7 @@ const styles = {
 	},
 }
 
-const EraseControls = ({ undo, redo, setEraseMode, eraseMode, isVisible, hasUndo, hasRedo}) => {
+const EraseControls = ({ undo, setEraseMode, eraseMode, isVisible, hasUndo}) => {
 	if (!isVisible) {
 		return null
 	}
@@ -52,9 +52,6 @@ const EraseControls = ({ undo, redo, setEraseMode, eraseMode, isVisible, hasUndo
 					<ArrowLeft
                         color={hasUndo ? '#111' : '#ccc'}
                     />
-				</div>
-				<div onClick={redo}>
-					<ArrowRight color={hasRedo ? '#111' : '#ccc'} />
 				</div>
 			</div>
 			<div style={styles.modeControl}>

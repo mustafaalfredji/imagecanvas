@@ -10,6 +10,7 @@ import { getSquares } from '../lib/get-squares'
 
 import { useState, useRef } from 'react'
 import html2canvas from 'html2canvas'
+import RemoveButton from './RemoveButton'
 import axios from 'axios'
 
 const callApi = async ({ imageData, squares, scale, prompt }) => {
@@ -47,6 +48,8 @@ const CanvasUI = ({
 
 	const drawingComponentRef = useRef(null)
 
+    console.log('history', history)
+    console.log('undoHistory', undoHistory)
 	const fillGenerate = async (data) => {
 		if (!data) return console.log('no data')
 
@@ -106,25 +109,13 @@ const CanvasUI = ({
 		})
 
         const undo = () => {
-            if (history.length <= 1) return; // Don't undo past the initial state
-          
-            const latestImage = history[history.length - 1];
-            setUndoHistory([...undoHistory, latestImage]);
-            setHistory(history.slice(0, history.length - 1));
-          
-            drawingComponentRef.current.restoreImage(history[history.length - 2]); // Restore the second to last image
+            if (history.length < 1) return; // Don't undo into an empty state
+            drawingComponentRef.current.restoreImage(); // Restore 
           }
-          
-          const redo = () => {
-            if (undoHistory.length === 0) return; // Don't redo into an empty state
-          
-            const latestImage = undoHistory[undoHistory.length - 1];
-            setHistory([...history, latestImage]);
-            setUndoHistory(undoHistory.slice(0, undoHistory.length - 1));
-          
-            drawingComponentRef.current.restoreImage(latestImage);
-          }
-
+        
+          const runRemove = () => {
+            drawingComponentRef.current.exportCanvas();
+            } 
 
 	return (
 		<div>
@@ -154,10 +145,7 @@ const CanvasUI = ({
 						workingHeight={workingAreaHeight - 160}
 						imageDimensions={imageDimensions}
 						squares={squares}
-						history={history}
-						setHistory={setHistory}
-						undoHistory={undoHistory}
-						setUndoHistory={setUndoHistory}
+                        setHistory={setHistory}
 						ref={drawingComponentRef}
 					/>
 				) : (
@@ -186,14 +174,17 @@ const CanvasUI = ({
 			)}
 			{currentTool === 'erase' && (
 				<div>
-					<div style={{ height: 80 }}></div>
+					<div style={{ height: 80 }}>
+                        <RemoveButton
+                            runRemove={runRemove}
+                            canRemove={history.length > 0}
+                        />
+                    </div>
 					<div style={{ height: 80 }}>
 						<EraseControls
 							isVisible={image ? true : false}
 							undo={undo}
-							redo={redo}
-                            hasRedo={undoHistory.length > 0}
-                            hasUndo={history.length > 1}
+                            hasUndo={history.length > 0}
 							eraseMode={eraseMode}
 							setEraseMode={setEraseMode}
 						/>
