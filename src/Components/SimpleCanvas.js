@@ -1,6 +1,6 @@
 import { useSpring, animated } from '@react-spring/web'
 import { createUseGesture, dragAction, pinchAction } from '@use-gesture/react'
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState, useImperativeHandle } from 'react'
 
 import './canvas.css'
 import { styles } from './styles'
@@ -43,7 +43,6 @@ const aspectRatioGenerator = (index) => {
 	}
 }
 
-
 const randomizeColorRGB = () => {
 	const r = Math.floor(Math.random() * 255)
 	const g = Math.floor(Math.random() * 255)
@@ -51,13 +50,27 @@ const randomizeColorRGB = () => {
 	return `rgb(${r}, ${g}, ${b})`
 }
 
-const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, currentTool }) => {
+const Canvas = forwardRef((props, ref) => {
+
+	const { aspectRatio,
+		image,
+		workingHeight,
+		imageDimensions,
+		squares,
+		currentTool,
+		setUndoHistory,
+		undoHistory,
+		history,
+		setHistory
+	} = props
+
 	const [coordinates, setCoordinates] = useState({ x: 0, y: 0 })
 	const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 })
 	const [canvasDimensions, setCanvasDimensions] = useState({
 		width: 0,
 		height: 0,
 	})
+	const [isDrawing, setIsDrawing] = useState(false)
 	const ratioInfo = aspectRatioGenerator(aspectRatio)
 
 	// set the image width to be the height of the canvas
@@ -72,13 +85,16 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 	const [canvasStyles, canvasApi] = useSpring(() => ({
 		width: 0,
 		height: 0,
+		scale: 1,
 	}))
 
 	const canvasRef = useRef(null)
 	const imgRef = useRef(null)
+	const maskRef = useRef(null)
 
 	const useGesture = createUseGesture([dragAction, pinchAction])
 
+	// manage pinch and drag gestures
 	const bind = useGesture(
 		{
 			onDrag: ({
@@ -135,83 +151,99 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 				cancel,
 			}) => {
 
-				if (first) {
-					const { width, height, x, y } =
-						imgRef.current.getBoundingClientRect()
-					const tx = ox - (x + width / 2)
-					const ty = oy - (y + height / 2)
-					memo = [
-						imgSpringStyle.x.get(),
-						imgSpringStyle.y.get(),
-						tx,
-						ty,
-						width,
-						height,
-					]
-				}
-
-				const aspectRatio =
-					imageDimensions.width / imageDimensions.height
-
-				const canvasWidth = canvasDimensions.width
-				const canvasHeight = canvasDimensions.height
-
-				const minimumWidth = canvasWidth * 0.2
-				const minimumHeight = canvasHeight * 0.2
-
-				let newHeight
-				let newWidth
-
-				if (aspectRatio > 1) {
-					newHeight =
-						imageDimensions.height * s < minimumHeight
-							? minimumHeight
-							: imageDimensions.height * s
-					newWidth = newHeight * aspectRatio
-				}
-				if (aspectRatio < 1) {
-					newWidth =
-						imageDimensions.width * s < minimumWidth
-							? minimumWidth
-							: imageDimensions.width * s
-					newHeight = newWidth / aspectRatio
-				}
-				if (aspectRatio === 1) {
-					newWidth =
-						imageDimensions.width * s < minimumWidth
-							? minimumWidth
-							: imageDimensions.width * s
-					newHeight = newWidth
-				}
-
-				const dx = (newWidth - memo[4]) / 2
-				const dy = (newHeight - memo[5]) / 2
-
-				const x = memo[0] - dx - (ms - 1) * memo[2]
-				const y = memo[1] - dy - (ms - 1) * memo[3]
-
-				api.start({
-					width: newWidth,
-					height: newHeight,
-					x: x,
-					y: y,
-					immediate: true,
-				})
-
-				if (!pinching) {
-					setCoordinates({
-						x: x,
-						y: y,
-					})
-
-					setImgDimensions({
+				if (currentTool === 'fill') {
+					if (first) {
+						const { width, height, x, y } =
+							imgRef.current.getBoundingClientRect()
+						const tx = ox - (x + width / 2)
+						const ty = oy - (y + height / 2)
+						memo = [
+							imgSpringStyle.x.get(),
+							imgSpringStyle.y.get(),
+							tx,
+							ty,
+							width,
+							height,
+						]
+					}
+	
+					const aspectRatio =
+						imageDimensions.width / imageDimensions.height
+	
+					const canvasWidth = canvasDimensions.width
+					const canvasHeight = canvasDimensions.height
+	
+					const minimumWidth = canvasWidth * 0.2
+					const minimumHeight = canvasHeight * 0.2
+	
+					let newHeight
+					let newWidth
+	
+					if (aspectRatio > 1) {
+						newHeight =
+							imageDimensions.height * s < minimumHeight
+								? minimumHeight
+								: imageDimensions.height * s
+						newWidth = newHeight * aspectRatio
+					}
+					if (aspectRatio < 1) {
+						newWidth =
+							imageDimensions.width * s < minimumWidth
+								? minimumWidth
+								: imageDimensions.width * s
+						newHeight = newWidth / aspectRatio
+					}
+					if (aspectRatio === 1) {
+						newWidth =
+							imageDimensions.width * s < minimumWidth
+								? minimumWidth
+								: imageDimensions.width * s
+						newHeight = newWidth
+					}
+	
+					const dx = (newWidth - memo[4]) / 2
+					const dy = (newHeight - memo[5]) / 2
+	
+					const x = memo[0] - dx - (ms - 1) * memo[2]
+					const y = memo[1] - dy - (ms - 1) * memo[3]
+	
+					api.start({
 						width: newWidth,
 						height: newHeight,
+						x: x,
+						y: y,
+						immediate: true,
 					})
+	
+					if (!pinching) {
+						setCoordinates({
+							x: x,
+							y: y,
+						})
+	
+						setImgDimensions({
+							width: newWidth,
+							height: newHeight,
+						})
+					}
+	
+					return memo
 				}
 
-				return memo
-			},
+				// if (currentTool === 'erase' || currentTool === 'add') {
+
+				// 	const dampingFactor = 0.9; // change this value as needed
+			
+				// 	// scale the canvas on pinch, scale can never be less than 1
+				// 	const newScale = 1 * s * dampingFactor;
+				// 	if (newScale < 1) return cancel()
+			
+				// 	canvasApi.start({
+				// 		scale: newScale,
+				// 		immediate: true,
+				// 	})
+				// }
+			}
 		},
 		{
 			drag: {
@@ -227,13 +259,29 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 		}
 	)
 
+	// Manage canvas dimensions to be the same as the image dimensions when you change the current tool to erase or add
 	useEffect(() => {
-		if(currentTool === 'erase' || currentTool === 'add') {
-			const imageAspectRatio = imageDimensions.width / imageDimensions.height
+		if (currentTool === 'erase' || currentTool === 'add') {
+			const imageAspectRatio =
+				imageDimensions.width / imageDimensions.height
+
+			setHistory([])
+			setUndoHistory([])
+
+			const workingAreaAspectRatio = window.innerWidth / workingHeight
+
+			const mask = maskRef.current;
+			const context = mask.getContext('2d');
+			
+			// Set some initial properties. You can change these as you like.
+			context.strokeStyle = "#000000";
+			context.lineWidth = 2;
+		  
+			// Save the initial state of the canvas to the history
+			setHistory([context.getImageData(0, 0, mask.width, mask.height)]);
 
 			// if image is wider than it is tall
 			if (imageAspectRatio > 1) {
-				// set canvas width to window width
 				canvasApi.start({
 					width: window.innerWidth,
 					height: window.innerWidth / imageAspectRatio,
@@ -254,6 +302,8 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 					width: window.innerWidth,
 					height: window.innerWidth / imageAspectRatio,
 				})
+				mask.width = window.innerWidth;
+				mask.height = window.innerWidth / imageAspectRatio;
 			}
 			// if image is a square
 			if (imageAspectRatio === 1) {
@@ -279,85 +329,122 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 					width: window.innerWidth,
 					height: window.innerWidth,
 				})
-
+				mask.width = window.innerWidth;
+				mask.height = window.innerWidth;
 			}
 			// if image is taller than it is wide
 			if (imageAspectRatio < 1) {
-				// set canvas height to window height
-				canvasApi.start({
-					width: workingHeight * imageAspectRatio,
-					height: workingHeight,
-					config: { duration: 100 },
-				})
-				api.start({
-					width: workingHeight * imageAspectRatio,
-					height: workingHeight,
-					x: 0,
-					y: 0,
-					config: { duration: 100 },
-				})
-				setImgDimensions({
-					width: workingHeight * imageAspectRatio,
-					height: workingHeight,
-				})
+				// if imageAspectRatio is taller than workingAreaAspectRatio then set canvas height to workingHeight and width to workingHeight * workingAreaAspectRatio
+				if (imageAspectRatio > workingAreaAspectRatio) {
+					canvasApi.start({
+						width: window.innerWidth,
+						height: window.innerWidth / imageAspectRatio,
+						config: { duration: 100 },
+					})
+					api.start({
+						width: window.innerWidth,
+						height: window.innerWidth / imageAspectRatio,
+						x: 0,
+						y: 0,
+						config: { duration: 100 },
+					})
+					setImgDimensions({
+						width: window.innerWidth,
+						height: window.innerWidth / imageAspectRatio,
+					})
+	
+					setCanvasDimensions({
+						width: window.innerWidth,
+						height: window.innerWidth / imageAspectRatio,
+					})
+					mask.width = window.innerWidth;
+					mask.height = window.innerWidth / imageAspectRatio;
+				}
 
-				setCanvasDimensions({
-					width: workingHeight * imageAspectRatio,
-					height: workingHeight,
-				})
+				// if imageAspectRatio is shorter than workingAreaAspectRatio then set canvas width to window width and height to window width / workingAreaAspectRatio
+				if (imageAspectRatio < workingAreaAspectRatio) {
+					canvasApi.start({
+						width: workingHeight * imageAspectRatio,
+						height: workingHeight,
+						config: { duration: 100 },
+					})
+					api.start({
+						width: workingHeight * imageAspectRatio,
+						height: workingHeight,
+						x: 0,
+						y: 0,
+						config: { duration: 100 },
+					})
+					setImgDimensions({
+						width: workingHeight * imageAspectRatio,
+						height: workingHeight,
+					})
+	
+					setCanvasDimensions({
+						width: workingHeight * imageAspectRatio,
+						height: workingHeight,
+					})
+					mask.width = workingHeight * imageAspectRatio;
+					mask.height = workingHeight;
+				}
 			}
 			setCoordinates({
 				x: 0,
 				y: 0,
 			})
 		}
-
 	}, [currentTool])
 
+
+
+	// Manage image dimensions to adjust to the current aspect ratio and working height when you change the current tool to fill
 	useEffect(() => {
 		if (currentTool === 'fill') {
-		let width = (ratioInfo.width / ratioInfo.height) * workingHeight
-		let height = workingHeight
+			let width = (ratioInfo.width / ratioInfo.height) * workingHeight
+			let height = workingHeight
+			setHistory([])
+			setUndoHistory([])
 
-		if (width > window.innerWidth) {
-			width = window.innerWidth
-			height = (ratioInfo.height / ratioInfo.width) * width
-		}
+			if (width > window.innerWidth) {
+				width = window.innerWidth
+				height = (ratioInfo.height / ratioInfo.width) * width
+			}
 
-		const imageAspectRatio = imageDimensions.width / imageDimensions.height
-		const canvasAspectRatio = width / height
+			const imageAspectRatio =
+				imageDimensions.width / imageDimensions.height
+			const canvasAspectRatio = width / height
 
-		if (imageAspectRatio > canvasAspectRatio) {
-			// image is wider than canvas, so set width to canvas width
-			api.start({
-				width: width,
-				height: width / imageAspectRatio,
-				config: { duration: 100 },
-			})
+			if (imageAspectRatio > canvasAspectRatio) {
+				// image is wider than canvas, so set width to canvas width
+				api.start({
+					width: width,
+					height: width / imageAspectRatio,
+					config: { duration: 100 },
+				})
 
-			setImgDimensions({
-				width: width,
-				height: width / imageAspectRatio,
-			})
-		} else {
-			// image is taller than canvas, so set height to canvas height
-			api.start({
-				width: height * imageAspectRatio,
-				height: height,
-				config: { duration: 100 },
-			})
+				setImgDimensions({
+					width: width,
+					height: width / imageAspectRatio,
+				})
+			} else {
+				// image is taller than canvas, so set height to canvas height
+				api.start({
+					width: height * imageAspectRatio,
+					height: height,
+					config: { duration: 100 },
+				})
 
-			setImgDimensions({
-				width: height * imageAspectRatio,
-				height: height,
-			})
-		}
+				setImgDimensions({
+					width: height * imageAspectRatio,
+					height: height,
+				})
+			}
 
-		canvasApi.start({ width, height, config: { duration: 100 } })
-		setCanvasDimensions({ width, height })
+			canvasApi.start({ width, height, config: { duration: 100 } })
+			setCanvasDimensions({ width, height })
 
-		api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
-		setCoordinates({ x: 0, y: 0 })
+			api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
+			setCoordinates({ x: 0, y: 0 })
 		}
 	}, [aspectRatio, currentTool])
 
@@ -387,7 +474,8 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 						? canvasDimensions.width
 						: coordinates.x + imgDimensions.width,
 
-					coordinates.y + imgDimensions.height > canvasDimensions.height
+					coordinates.y + imgDimensions.height >
+					canvasDimensions.height
 						? canvasDimensions.height
 						: coordinates.y + imgDimensions.height,
 				],
@@ -404,6 +492,67 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 
 		document.dispatchEvent(event)
 	})
+
+
+	// masking and drawing management
+	const startDrawing = (event) => {
+		const canvas = maskRef.current;
+		const context = canvas.getContext('2d');
+	  
+		context.fillStyle = "rgba(255, 0, 0, 0.5)";  // Semi-transparent red
+
+		const rect = canvas.getBoundingClientRect();
+		const x = event.touches[0].clientX - rect.left;
+		const y = event.touches[0].clientY - rect.top;
+		
+		context.beginPath();
+		context.arc(x, y, 5, 0, Math.PI * 2, true); // 5 is the radius of the circle
+		context.fill();
+		setIsDrawing(true);
+	  }
+	  
+	  
+	  const draw = (event) => {
+		const canvas = maskRef.current;
+		const context = canvas.getContext('2d');
+	  
+		context.fillStyle = "rgba(255, 0, 0, 0.6)";  // Semi-transparent red
+
+		if (!isDrawing) return;
+	  
+		const rect = canvas.getBoundingClientRect();
+		const x = event.touches[0].clientX - rect.left;
+		const y = event.touches[0].clientY - rect.top;
+		
+		context.beginPath();
+		context.arc(x, y, 8, 0, Math.PI * 2, true); // 5 is the radius of the circle
+		context.fill();
+	  }
+
+
+	  const finishDrawing = () => {
+		setIsDrawing(false);
+	  
+		// Save the current image data to the history array when finished drawing
+		const canvas = maskRef.current
+		const context = canvas.getContext('2d')
+		setHistory([...history, context.getImageData(0, 0, canvas.width, canvas.height)]);
+	  
+		// Clear the redo history whenever a new action is performed
+		setUndoHistory([]);
+	  }
+
+	useImperativeHandle(ref, () => ({
+		restoreImage: (imageData) => {
+		  try {
+			const context = maskRef.current.getContext('2d');
+			context.putImageData(imageData, 0, 0);
+		  } catch (error) {
+			console.error("Error restoring image data", error);
+		  }
+		}
+	  }));
+
 
 	// console.log(completedGenerations)
 	return (
@@ -423,16 +572,34 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 					...canvasStyles,
 					position: 'relative',
 					touchAction: 'none',
+					objectFit: 'contain',
 				}}
-				// bind only if imgRef is defined
 				{...bind()}
 			>
+				{currentTool !== 'fill' && (
+					<canvas
+						ref={maskRef}
+						style={{
+							// ...canvasStyles,
+							position: 'absolute',
+							touchAction: 'none',
+							left: 0,
+							zIndex: 21,
+						}}
+						// width={canvasDimensions.width}
+						// height={canvasDimensions.height}
+						onTouchStart={startDrawing}
+						onTouchEnd={finishDrawing}
+						onTouchMove={draw}
+					/>
+				)}
+
 				<animated.img
 					ref={imgRef}
 					style={{
 						...styles.initialImg,
 						...imgSpringStyle,
-						zIndex: 10,
+						zIndex: 20,
 						left: 0,
 						right: 0,
 						position: 'absolute',
@@ -441,26 +608,9 @@ const Canvas = ({ aspectRatio, image, workingHeight, imageDimensions, squares, c
 					src={image}
 					alt='sss'
 				/>
-				{/* {squares.map((square, i) => {
-					return (
-						<animated.div
-							key={i}
-							style={{
-								top: square.topLeft[1],
-								left: square.topLeft[0],
-								width: square.bottomRight[1] - square.topLeft[1],
-								height: square.bottomRight[0] - square.topLeft[0],
-								position: 'absolute',
-								touchAction: 'none',
-								background: randomizeColorRGB(),
-								zIndex: squares.length - i,
-							}}
-						/>
-					)
-				})} */}
 			</animated.div>
 		</div>
 	)
-}
+})
 
 export default Canvas
