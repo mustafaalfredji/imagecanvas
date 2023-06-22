@@ -42,14 +42,11 @@ const CanvasUI = ({
 	const [textPrompt, setTextPrompt] = useState('')
 	const [eraseMode, setEraseMode] = useState('mask')
 	const [history, setHistory] = useState([])
-	const [undoHistory, setUndoHistory] = useState([])
 
 	const [squares, setSquares] = useState([])
 
 	const drawingComponentRef = useRef(null)
 
-    console.log('history', history)
-    console.log('undoHistory', undoHistory)
 	const fillGenerate = async (data) => {
 		if (!data) return console.log('no data')
 
@@ -152,6 +149,7 @@ const CanvasUI = ({
 						imageDimensions={imageDimensions}
 						squares={squares}
                         setHistory={setHistory}
+                        eraseMode={eraseMode}
 						ref={drawingComponentRef}
 					/>
 				) : (

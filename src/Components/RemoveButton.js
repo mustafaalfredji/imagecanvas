@@ -23,7 +23,7 @@ const RemoveButton  = ({runRemove, canRemove, isRemoveBG, runRemoveBackground, i
     if(!isVisible) {
         return null
     }
-    
+
     return (
         <div style={styles.buttonWrapper}>
             <div
@@ -34,7 +34,11 @@ const RemoveButton  = ({runRemove, canRemove, isRemoveBG, runRemoveBackground, i
                     transition: 'all 0.2s ease',
                     whiteSpace: 'nowrap',
                 }}
-                onClick={isRemoveBG ? runRemoveBackground : runRemove}
+                onClick={
+                    canRemove
+                        ? isRemoveBG ? runRemoveBackground : runRemove
+                        : null
+                    }
             >
                 {isRemoveBG ? 'Remove Background' : 'Remove'}
             </div>
