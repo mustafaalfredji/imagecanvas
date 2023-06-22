@@ -42,14 +42,11 @@ const CanvasUI = ({
 	const [textPrompt, setTextPrompt] = useState('')
 	const [eraseMode, setEraseMode] = useState('mask')
 	const [history, setHistory] = useState([])
-	const [undoHistory, setUndoHistory] = useState([])
 
 	const [squares, setSquares] = useState([])
 
 	const drawingComponentRef = useRef(null)
 
-    console.log('history', history)
-    console.log('undoHistory', undoHistory)
 	const fillGenerate = async (data) => {
 		if (!data) return console.log('no data')
 
@@ -113,10 +110,16 @@ const CanvasUI = ({
             drawingComponentRef.current.restoreImage(); // Restore 
           }
         
-          const runRemove = () => {
+        const runRemove = () => {
             drawingComponentRef.current.exportCanvas();
-            } 
+        } 
 
+        const handleEraseMode = (mode) => {
+            setEraseMode(mode)
+            if(mode === 'background') {
+                undo()
+            }
+        }
 	return (
 		<div>
 			{isLoading && (
@@ -146,26 +149,29 @@ const CanvasUI = ({
 						imageDimensions={imageDimensions}
 						squares={squares}
                         setHistory={setHistory}
+                        eraseMode={eraseMode}
 						ref={drawingComponentRef}
 					/>
 				) : (
-					<CanvasEmpty clickUpload={clickUpload} />
+					<CanvasEmpty
+                        clickUpload={clickUpload}
+                        aspectRatio={aspectRatio}
+                        workingHeight={workingAreaHeight - 160}
+                    />
 				)}
 			</div>
 			{currentTool === 'fill' && (
 				<div>
 					<div style={{ height: 80 }}>
-						{image ? (
-							<PromptBox
-								generate={fillGenerate}
-								textPrompt={textPrompt}
-								setTextPrompt={setTextPrompt}
-							/>
-						) : null}
+                        <PromptBox
+                            generate={fillGenerate}
+                            textPrompt={textPrompt}
+                            setTextPrompt={setTextPrompt}
+                        />
 					</div>
 					<div style={{ height: 80 }}>
 						<FillControls
-							isVisible={image ? true : false}
+							isVisible={true}
 							currentCanvas={aspectRatio}
 							setCurrentCanvas={setAspectRatio}
 						/>
@@ -177,7 +183,9 @@ const CanvasUI = ({
 					<div style={{ height: 80 }}>
                         <RemoveButton
                             runRemove={runRemove}
-                            canRemove={history.length > 0}
+                            isRemoveBG={eraseMode === 'background'}
+                            canRemove={history.length > 0 || eraseMode === 'background'}
+                            isVisible={image ? true : false}
                         />
                     </div>
 					<div style={{ height: 80 }}>
@@ -186,7 +194,7 @@ const CanvasUI = ({
 							undo={undo}
                             hasUndo={history.length > 0}
 							eraseMode={eraseMode}
-							setEraseMode={setEraseMode}
+							setEraseMode={handleEraseMode}
 						/>
 					</div>
 				</div>

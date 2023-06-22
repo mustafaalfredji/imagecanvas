@@ -64,6 +64,7 @@ const Canvas = forwardRef((props, ref) => {
 		imageDimensions,
 		squares,
 		currentTool,
+		eraseMode,
 		setHistory,
 	} = props
 
@@ -610,6 +611,8 @@ const Canvas = forwardRef((props, ref) => {
 		},
 	}))
 
+	const showCanvas = currentTool !== 'fill'
+	const shouldDraw = eraseMode === 'mask'
 	// console.log(completedGenerations)
 	return (
 		<div
@@ -632,7 +635,7 @@ const Canvas = forwardRef((props, ref) => {
 				}}
 				{...bind()}
 			>
-				{currentTool !== 'fill' && (
+				{showCanvas && (
 					<canvas
 						ref={maskRef}
 						style={{
@@ -644,9 +647,9 @@ const Canvas = forwardRef((props, ref) => {
 						}}
 						// width={canvasDimensions.width}
 						// height={canvasDimensions.height}
-						onTouchStart={startDrawing}
-						onTouchEnd={finishDrawing}
-						onTouchMove={draw}
+						onTouchStart={shouldDraw ? startDrawing : null}
+						onTouchEnd={shouldDraw ? finishDrawing : null}
+						onTouchMove={shouldDraw ? draw : null}
 					/>
 				)}
 
