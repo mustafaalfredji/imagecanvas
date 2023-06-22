@@ -53,7 +53,7 @@ const LoadigImg = ({ aspectRatio, img }) => {
 			case 4:
 				return '16/9'
 			default:
-				return '9/16'
+				return aspectRatio
 		}
 	}
 

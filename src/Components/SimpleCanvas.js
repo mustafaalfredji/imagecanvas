@@ -389,7 +389,6 @@ const Canvas = forwardRef((props, ref) => {
 				x: 0,
 				y: 0,
 			})
-			setHistory([])
 		}
 	}, [currentTool])
 
@@ -543,8 +542,6 @@ const Canvas = forwardRef((props, ref) => {
 			}
 		},
 		exportCanvas: () => {
-			console.log('exporting canvas')
-
 			const originalCanvas = maskRef.current
 			const originalContext = originalCanvas.getContext('2d')
 
@@ -593,7 +590,7 @@ const Canvas = forwardRef((props, ref) => {
 			const imageUrl = tempCanvas.toDataURL('image/png')
 			const link = document.createElement('a')
 			link.href = imageUrl
-			link.download = 'canvas.png'
+			link.download = 'mask.png'
 			link.click()
 
 			// export image from animated.img with the ref imgRef

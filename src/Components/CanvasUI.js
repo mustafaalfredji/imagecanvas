@@ -1,17 +1,20 @@
-import Canvas from './Canvas'
+import { getSquares } from '../lib/get-squares'
+
+import { useState, useRef } from 'react'
+import html2canvas from 'html2canvas'
+import axios from 'axios'
+
 import FillControls from './FillControls'
 import EraseControls from './EraseControls'
+import AddControls from './AddControls'
 import CanvasEmpty from './CanvasEmpty'
 import PromptBox from './PromptBox'
 import SimpleCanvas from './SimpleCanvas'
 import LoadingImg from './LoadingImg'
 
-import { getSquares } from '../lib/get-squares'
-
-import { useState, useRef } from 'react'
-import html2canvas from 'html2canvas'
 import RemoveButton from './RemoveButton'
-import axios from 'axios'
+
+import { useEffect } from 'react'
 
 const callApi = async ({ imageData, squares, scale, prompt }) => {
 	const response = await axios.post('http://localhost:8080/fill-squares', {
@@ -38,9 +41,10 @@ const CanvasUI = ({
 }) => {
 	const [aspectRatio, setAspectRatio] = useState(0)
 	const [isLoading, setIsLoading] = useState(false)
+    const [loadingAspectRatio, setLoadingAspectRatio] = useState('9/16')
 	const [loadingImg, setLoadingImg] = useState('')
 	const [textPrompt, setTextPrompt] = useState('')
-	const [eraseMode, setEraseMode] = useState('mask')
+	const [subMode, setSubmode] = useState('mask')
 	const [history, setHistory] = useState([])
 
 	const [squares, setSquares] = useState([])
@@ -53,6 +57,7 @@ const CanvasUI = ({
 		const { image, scale } = await exportImage({
 			canvaRef: data.canvaRef,
 		})
+
 		const newSquares = getSquares({
 			ratioHeight: data.data.ratioHeight,
 			ratioWidth: data.data.ratioWidth,
@@ -87,6 +92,8 @@ const CanvasUI = ({
 			const canvasWidth = element.clientWidth
 			const canvasHeight = element.clientHeight
 
+            console.log(canvasWidth, canvasHeight)
+
 			const scale =
 				1024 / (canvasWidth < canvasHeight ? canvasWidth : canvasHeight)
 			html2canvas(element, {
@@ -101,25 +108,61 @@ const CanvasUI = ({
 				resolve({
 					image,
 					scale,
+                    height: canvasHeight,
+                    width: canvasWidth
 				})
 			})
 		})
 
-        const undo = () => {
-            if (history.length < 1) return; // Don't undo into an empty state
-            drawingComponentRef.current.restoreImage(); // Restore 
-          }
-        
-        const runRemove = () => {
-            drawingComponentRef.current.exportCanvas();
-        } 
+	const undo = () => {
+		if (history.length < 1) return // Don't undo into an empty state
+		drawingComponentRef.current.restoreImage() // Restore
+	}
 
-        const handleEraseMode = (mode) => {
-            setEraseMode(mode)
-            if(mode === 'background') {
-                undo()
-            }
+	const runRemove = () => {
+		drawingComponentRef.current.exportCanvas()
+	}
+
+
+	const handleSubmodeChange = (mode) => {
+		setSubmode(mode)
+		if (mode === 'background') {
+			undo()
+		}
+	}
+
+    const addObject = async (data) => {
+        const { image, scale, width, height } = await exportImage({
+			canvaRef: data.canvaRef,
+		})
+
+        setLoadingImg(image)
+		setIsLoading(true)
+        setLoadingAspectRatio(`${width}/${height}`)
+
+        drawingComponentRef.current.exportCanvas()
+        
+        setTimeout(() => {
+            setLoadingImg('')
+            setIsLoading(false)
+            setLoadingAspectRatio('')
+        }, 3000)
+    }
+
+    useEffect(() => {
+        //when the current tool changes, reset the history, run undo and reset the prompt
+        if (currentTool !== 'fill') {
+            undo()
         }
+        if(currentTool === 'fill') {
+            setAspectRatio(0)
+        }
+
+        setHistory([])
+        setTextPrompt('')
+    }, [currentTool])
+
+
 	return (
 		<div>
 			{isLoading && (
@@ -135,7 +178,7 @@ const CanvasUI = ({
 				>
 					<LoadingImg
 						img={loadingImg ? loadingImg : ''}
-						aspectRatio={aspectRatio}
+						aspectRatio={loadingAspectRatio ? loadingAspectRatio : aspectRatio}
 					/>
 				</div>
 			)}
@@ -148,26 +191,30 @@ const CanvasUI = ({
 						workingHeight={workingAreaHeight - 160}
 						imageDimensions={imageDimensions}
 						squares={squares}
-                        setHistory={setHistory}
-                        eraseMode={eraseMode}
+						setHistory={setHistory}
+						eraseMode={subMode}
 						ref={drawingComponentRef}
 					/>
 				) : (
 					<CanvasEmpty
-                        clickUpload={clickUpload}
-                        aspectRatio={aspectRatio}
-                        workingHeight={workingAreaHeight - 160}
-                    />
+						clickUpload={clickUpload}
+						aspectRatio={aspectRatio}
+						workingHeight={workingAreaHeight - 160}
+					/>
 				)}
 			</div>
 			{currentTool === 'fill' && (
 				<div>
 					<div style={{ height: 80 }}>
-                        <PromptBox
-                            generate={fillGenerate}
-                            textPrompt={textPrompt}
-                            setTextPrompt={setTextPrompt}
-                        />
+						<PromptBox
+							generate={fillGenerate}
+							textPrompt={textPrompt}
+							setTextPrompt={setTextPrompt}
+							generationText={'fill'}
+							isVisible
+                            isActive
+							isOptional={image ? true : false}
+						/>
 					</div>
 					<div style={{ height: 80 }}>
 						<FillControls
@@ -181,20 +228,48 @@ const CanvasUI = ({
 			{currentTool === 'erase' && (
 				<div>
 					<div style={{ height: 80 }}>
-                        <RemoveButton
-                            runRemove={runRemove}
-                            isRemoveBG={eraseMode === 'background'}
-                            canRemove={history.length > 0 || eraseMode === 'background'}
-                            isVisible={image ? true : false}
-                        />
-                    </div>
+						<RemoveButton
+							runRemove={runRemove}
+							runRemoveBackground={() =>
+								console.log('remove background')
+							}
+							isRemoveBG={subMode === 'background'}
+							canRemove={
+								history.length > 0 || subMode === 'background'
+							}
+							isVisible={image ? true : false}
+						/>
+					</div>
 					<div style={{ height: 80 }}>
 						<EraseControls
 							isVisible={image ? true : false}
 							undo={undo}
-                            hasUndo={history.length > 0}
-							eraseMode={eraseMode}
-							setEraseMode={handleEraseMode}
+							hasUndo={history.length > 0}
+							eraseMode={subMode}
+							setEraseMode={handleSubmodeChange}
+						/>
+					</div>
+				</div>
+			)}
+			{currentTool === 'add' && (
+				<div>
+					<div style={{ height: 80 }}>
+						<PromptBox
+							generate={addObject}
+							textPrompt={textPrompt}
+							setTextPrompt={setTextPrompt}
+							generationText={'Add'}
+							isVisible={image ? true : false}
+                            isActive={history.length > 0}
+						/>
+					</div>
+					<div style={{ height: 80 }}>
+						<AddControls
+							isVisible={image ? true : false}
+							undo={undo}
+							hasUndo={history.length > 0}
+							subMode={subMode}
+							setSubmode={handleSubmodeChange}
 						/>
 					</div>
 				</div>
