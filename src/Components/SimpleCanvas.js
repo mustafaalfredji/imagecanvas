@@ -441,7 +441,7 @@ const Canvas = forwardRef((props, ref) => {
 			api.start({ x: 0, y: 0, delay: 100, config: { duration: 150 } })
 			setCoordinates({ x: 0, y: 0 })
 		}
-	}, [aspectRatio, currentTool])
+	}, [aspectRatio, currentTool, imageDimensions])
 
 	useEffect(() => {
 		const calcedData = {
@@ -682,7 +682,7 @@ const Canvas = forwardRef((props, ref) => {
 							position: 'absolute',
 							touchAction: 'none',
 							left: 0,
-							zIndex: 21,
+							zIndex: 22,
 						}}
 						// width={canvasDimensions.width}
 						// height={canvasDimensions.height}
