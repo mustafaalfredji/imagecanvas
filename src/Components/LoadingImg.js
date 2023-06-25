@@ -36,7 +36,7 @@ const styles = {
     }
 }
 
-const LoadigImg = ({ aspectRatio, img }) => {
+const LoadigImg = ({ aspectRatio, img, onCancel }) => {
 	const [caption, setCaption] = useState('')
 	const [animationClass, setAnimationClass] = useState('')
 
@@ -125,6 +125,27 @@ const LoadigImg = ({ aspectRatio, img }) => {
 				className={`${animationClass}`}
 			>
 				{caption}
+			</div>
+			<div
+				onClick={onCancel}
+				style={{
+					height: 44,
+					display: 'flex',
+					justifyContent: 'center',
+					paddingLeft: 20,
+					paddingRight: 20,
+					alignItems: 'center',
+					marginTop: 40,
+					color: '#ffffff',
+					fontSize: 16,
+					fontWeight: 600,
+					textShadow: '0px 4px 8px rgba(0, 0, 0, 0.14)',
+					background: 'rgba(0,0,0,0.4)',
+					borderRadius: 10,
+					zIndex: 12,
+				}}
+			>
+				Cancel 
 			</div>
             <div style={styles.background}/>
 		</div>

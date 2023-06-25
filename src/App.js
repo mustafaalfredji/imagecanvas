@@ -56,6 +56,8 @@ function App() {
           currentTool={currentTool}
           image={image}
           imageDimensions={imageDimensions}
+          setImageDimensions={setImageDimensions}
+          setImage={setImage}
           clickUpload={handleClick}
           workingAreaHeight={window.innerHeight - 80}
         />

@@ -1,5 +1,7 @@
 import { useSpring, animated } from '@react-spring/web'
 import { createUseGesture, dragAction, pinchAction } from '@use-gesture/react'
+import html2canvas from 'html2canvas'
+
 import {
 	forwardRef,
 	useEffect,
@@ -486,6 +488,7 @@ const Canvas = forwardRef((props, ref) => {
 		document.dispatchEvent(event)
 	})
 
+
 	// masking and drawing management
 	const startDrawing = (event) => {
 		const canvas = maskRef.current
@@ -541,72 +544,110 @@ const Canvas = forwardRef((props, ref) => {
 				console.error('Error restoring image data', error)
 			}
 		},
-		exportCanvas: () => {
-			const originalCanvas = maskRef.current
-			const originalContext = originalCanvas.getContext('2d')
-
+		exportCanvasWithMask: async (apiCall) => {
+			const originalCanvas = maskRef.current;
+			const originalContext = originalCanvas.getContext('2d');
+		  
 			// Get the image data from the original canvas
 			const originalImageData = originalContext.getImageData(
-				0,
-				0,
-				originalCanvas.width,
-				originalCanvas.height
-			)
-			const originalData = originalImageData.data
-
+			  0,
+			  0,
+			  originalCanvas.width,
+			  originalCanvas.height
+			);
+			const originalData = originalImageData.data;
+		  
 			// Create a temporary canvas and fill it with black
-			const tempCanvas = document.createElement('canvas')
-			tempCanvas.width = originalCanvas.width
-			tempCanvas.height = originalCanvas.height
-			const tempContext = tempCanvas.getContext('2d')
-			tempContext.fillStyle = 'black'
-			tempContext.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
-
+			const tempCanvas = document.createElement('canvas');
+			tempCanvas.width = originalCanvas.width;
+			tempCanvas.height = originalCanvas.height;
+			const tempContext = tempCanvas.getContext('2d');
+			tempContext.fillStyle = 'black';
+			tempContext.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+		  
 			// Get the image data from the temporary canvas
 			const tempImageData = tempContext.getImageData(
-				0,
-				0,
-				tempCanvas.width,
-				tempCanvas.height
-			)
-			const tempData = tempImageData.data
-
+			  0,
+			  0,
+			  tempCanvas.width,
+			  tempCanvas.height
+			);
+			const tempData = tempImageData.data;
+		  
 			// Loop over each pixel in the original image data
 			for (let i = 0; i < originalData.length; i += 4) {
-				if (originalData[i + 3] !== 0) {
-					// If the pixel is not transparent (it's part of a drawing), make the corresponding pixel white in the temporary canvas
-					tempData[i] = 255
-					tempData[i + 1] = 255
-					tempData[i + 2] = 255
-					tempData[i + 3] = 255
-
-				}
+			  if (originalData[i + 3] !== 0) {
+				// If the pixel is not transparent (it's part of a drawing), make the corresponding pixel white in the temporary canvas
+				tempData[i] = 255;
+				tempData[i + 1] = 255;
+				tempData[i + 2] = 255;
+				tempData[i + 3] = 255;
+			  }
 			}
-
+		  
 			// Put the modified image data back into the temporary canvas
-			tempContext.putImageData(tempImageData, 0, 0)
-
+			tempContext.putImageData(tempImageData, 0, 0);
+		  
 			// Export the temporary canvas
-			const imageUrl = tempCanvas.toDataURL('image/png')
-			const link = document.createElement('a')
-			link.href = imageUrl
-			link.download = 'mask.png'
-			link.click()
-
+			const maskImageData = tempCanvas.toDataURL('image/png');
+		  
 			// export image from animated.img with the ref imgRef
-			const img = imgRef.current
-			const imgCanvas = document.createElement('canvas')
-			imgCanvas.width = canvasDimensions.width
-			imgCanvas.height = canvasDimensions.height
-			const imgContext = imgCanvas.getContext('2d')
+			const img = imgRef.current;
+			const imgCanvas = document.createElement('canvas');
+			imgCanvas.width = canvasDimensions.width;
+			imgCanvas.height = canvasDimensions.height;
+			const imgContext = imgCanvas.getContext('2d');
 			imgContext.drawImage(img, 0, 0, imgCanvas.width, imgCanvas.height);
-			const imgData = imgCanvas.toDataURL('image/png')
-			const imgLink = document.createElement('a')
-			imgLink.href = imgData
-			imgLink.download = 'image.png'
-			imgLink.click()
-		},
+			const imageData = imgCanvas.toDataURL('image/png');
+		  
+			console.log(image)
+			// Call the API request function
+			return { imageData, maskImageData };
+		  
+		  
+			// // Optional: download the resulting image
+			// const link = document.createElement('a');
+			// link.href = resultUrl;
+			// link.download = 'result.png';
+			// link.click();
+		  },
+
+		exportCanvas : async (apiCall) => new Promise((resolve, reject) => {
+			const element = canvasRef.current
+
+			const canvasWidth = element.clientWidth
+			const canvasHeight = element.clientHeight
+
+
+			console.log('element', element)
+
+			const scale =
+				1024 / (canvasWidth < canvasHeight ? canvasWidth : canvasHeight)
+
+				
+			html2canvas(element, {
+				backgroundColor: null,
+				logging: true,
+				width: canvasWidth,
+				height: canvasHeight,
+				scale,
+				allowTaint: true,
+				useCORS: true,
+			}).then((canvas) => {
+				// get the image data
+				const image = canvas.toDataURL('image/png')
+				resolve({
+					image,
+					scale,
+					height: canvasHeight,
+					width: canvasWidth,
+				})
+				return { image, scale, height: canvasHeight, width: canvasWidth}
+			})
+		})
+
 	}))
+
 
 	const showCanvas = currentTool !== 'fill'
 	const shouldDraw = eraseMode === 'mask'
@@ -628,6 +669,7 @@ const Canvas = forwardRef((props, ref) => {
 					...canvasStyles,
 					position: 'relative',
 					touchAction: 'none',
+					zIndex: 20,
 					objectFit: 'contain',
 				}}
 				{...bind()}
@@ -652,17 +694,18 @@ const Canvas = forwardRef((props, ref) => {
 
 				<animated.img
 					ref={imgRef}
+					crossorigin="anonymous"
 					style={{
 						...styles.initialImg,
 						...imgSpringStyle,
-						zIndex: 20,
+						zIndex: 21,
 						left: 0,
 						right: 0,
 						position: 'absolute',
 						touchAction: 'none',
 					}}
 					src={image}
-					alt='sss'
+					alt={image}
 				/>
 			</animated.div>
 		</div>

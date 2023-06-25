@@ -1,3 +1,4 @@
+const { useState, useEffect } = require('react')
 const styles = {
     buttonWrapper: {
         display: 'flex',
@@ -20,6 +21,25 @@ const styles = {
 }
 
 const RemoveButton  = ({runRemove, canRemove, isRemoveBG, runRemoveBackground, isVisible}) => {
+
+
+    const [canvaFillData, setCanvaFillData] = useState(null)
+
+	const handleFillData = (e) => {
+		setCanvaFillData(e.detail)
+	}
+	useEffect(() => {
+		document.addEventListener('canva-fill-data', handleFillData, false)
+
+		return () => {
+			document.removeEventListener(
+				'canva-fill-data',
+				handleFillData,
+				false
+			)
+		}
+	}, [])
+
     if(!isVisible) {
         return null
     }
@@ -36,7 +56,7 @@ const RemoveButton  = ({runRemove, canRemove, isRemoveBG, runRemoveBackground, i
                 }}
                 onClick={
                     canRemove
-                        ? isRemoveBG ? runRemoveBackground : runRemove
+                        ? isRemoveBG ? () => runRemoveBackground(canvaFillData) : () => runRemove(canvaFillData)
                         : null
                     }
             >

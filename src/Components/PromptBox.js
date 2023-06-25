@@ -44,6 +44,7 @@ const PromptBox = ({
 	generationText,
 	isVisible,
 	isOptional,
+    placeholder,
 	isActive,
 }) => {
 	const [canvaFillData, setCanvaFillData] = useState(null)
@@ -81,7 +82,7 @@ const PromptBox = ({
 					type='text'
 					value={textPrompt}
 					disabled={!isActive}
-					placeholder={'Prompt' + (isOptional ? ' (optional)' : '')}
+					placeholder={placeholder}
 					onChange={(e) => setTextPrompt(e.target.value)}
 				/>
 				<button

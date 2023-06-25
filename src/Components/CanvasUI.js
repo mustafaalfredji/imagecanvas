@@ -1,6 +1,6 @@
 import { getSquares } from '../lib/get-squares'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import html2canvas from 'html2canvas'
 import axios from 'axios'
 
@@ -14,8 +14,6 @@ import LoadingImg from './LoadingImg'
 
 import RemoveButton from './RemoveButton'
 
-import { useEffect } from 'react'
-
 const callApi = async ({ imageData, squares, scale, prompt }) => {
 	const response = await axios.post('http://localhost:8080/fill-squares', {
 		imageData,
@@ -28,20 +26,33 @@ const callApi = async ({ imageData, squares, scale, prompt }) => {
 
 	const data = response.data
 
+	return data
+}
+
+const uploadImage = async ({ image }) => {
+	const response = await axios.post('http://localhost:8080/upload-image', {
+		image,
+	})
+
+
+	const data = response.data
+
 	console.log(data)
 	return data.url
 }
 
 const CanvasUI = ({
 	image,
+    setImage,
 	clickUpload,
 	currentTool,
 	workingAreaHeight,
 	imageDimensions,
+    setImageDimensions,
 }) => {
 	const [aspectRatio, setAspectRatio] = useState(0)
 	const [isLoading, setIsLoading] = useState(false)
-    const [loadingAspectRatio, setLoadingAspectRatio] = useState('9/16')
+	const [loadingAspectRatio, setLoadingAspectRatio] = useState('9/16')
 	const [loadingImg, setLoadingImg] = useState('')
 	const [textPrompt, setTextPrompt] = useState('')
 	const [subMode, setSubmode] = useState('mask')
@@ -51,12 +62,92 @@ const CanvasUI = ({
 
 	const drawingComponentRef = useRef(null)
 
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+	const callRemoveObject = async ({ image, maskImage }) => {
+		const response = await axios.post(
+			'http://localhost:8080/remove-object',
+			{
+				image,
+				maskImage,
+			}
+		)
+
+		const getUrl = response.data.getUrl
+
+        let newPrediction = { status: 'running' }
+		while (
+			newPrediction.status !== 'succeeded' ||
+			newPrediction.status !== 'failed'
+		) {
+			await sleep(1000)
+			const response = await axios.post(
+				'http://localhost:8080/get-prediction',
+				{
+					getUrl: getUrl,
+				}
+			)
+        
+            newPrediction = response.data
+            if (newPrediction.output && newPrediction.output.length) { break }
+		}
+        if (newPrediction.output && newPrediction.output.length) {
+            setIsLoading(false)
+            setImage(newPrediction.output)
+        }
+	}
+
+    const callRemoveBackground = async ({ image }) => {
+        const response = await axios.post(
+            'http://localhost:8080/remove-background',
+            {
+                image,
+            }
+        )
+
+        const getUrl = response.data.getUrl
+
+        let newPrediction = { status: 'running' }
+        while (
+            newPrediction.status !== 'succeeded' ||
+            newPrediction.status !== 'failed'
+        ) {
+            await sleep(1000)
+            const response = await axios.post(
+                'http://localhost:8080/get-prediction',
+                {
+                    getUrl: getUrl,
+                }
+            )
+
+            newPrediction = response.data
+            if (newPrediction.output && newPrediction.output.length) { break }
+        }
+        if (newPrediction.output && newPrediction.output.length) {
+
+            console.log('newPrediction.output', newPrediction.output)
+            // reupload newPrediction.output  and get new url
+            setImage(newPrediction.output)
+            setLoadingImg(newPrediction.output)
+
+            sleep(2000)
+            setIsLoading(false)
+        }
+    }
+
 	const fillGenerate = async (data) => {
 		if (!data) return console.log('no data')
 
-		const { image, scale } = await exportImage({
-			canvaRef: data.canvaRef,
-		})
+		// const { image, scale } = await exportImage({
+		// 	canvaRef: data.canvaRef,
+		// })
+
+        const canvasData = await drawingComponentRef.current.exportCanvas()
+
+
+        const { image, scale } = canvasData
+
+        // console.log(image)
 
 		const newSquares = getSquares({
 			ratioHeight: data.data.ratioHeight,
@@ -66,9 +157,9 @@ const CanvasUI = ({
 			squareSize: data.data.squareSize,
 		})
 
-		setSquares(newSquares)
 
 		setLoadingImg(image)
+        setLoadingAspectRatio(data.data.ratioWidth + '/' + data.data.ratioHeight)
 		setIsLoading(true)
 
 		const newImg = await callApi({
@@ -79,9 +170,11 @@ const CanvasUI = ({
 		})
 
 		setLoadingImg(newImg.url)
-
-		console.log(newImg.url)
-		// console.log(JSON.stringify(squares))
+        setImageDimensions(newImg.dimensions)
+        setImage(newImg.url)
+        setTimeout(() => {
+            setIsLoading(false)
+        }, 2000)
 	}
 
 	// https://usefulangle.com/post/353/javascript-canvas-image-upload
@@ -92,7 +185,7 @@ const CanvasUI = ({
 			const canvasWidth = element.clientWidth
 			const canvasHeight = element.clientHeight
 
-            console.log(canvasWidth, canvasHeight)
+			console.log(canvasWidth, canvasHeight)
 
 			const scale =
 				1024 / (canvasWidth < canvasHeight ? canvasWidth : canvasHeight)
@@ -108,8 +201,8 @@ const CanvasUI = ({
 				resolve({
 					image,
 					scale,
-                    height: canvasHeight,
-                    width: canvasWidth
+					height: canvasHeight,
+					width: canvasWidth,
 				})
 			})
 		})
@@ -119,9 +212,50 @@ const CanvasUI = ({
 		drawingComponentRef.current.restoreImage() // Restore
 	}
 
-	const runRemove = () => {
-		drawingComponentRef.current.exportCanvas()
+    const runRemove = async (data) => {
+        const { image, scale, width, height } = await exportImage({
+			canvaRef: data.canvaRef,
+		})
+		setLoadingImg(image)
+		setIsLoading(true)
+		setLoadingAspectRatio(`${width}/${height}`)
+
+        const canvasData = await drawingComponentRef.current.exportCanvasWithMask()
+
+
+        const { imageData, maskImageData } = canvasData
+
+        let base64Data = imageData.replace(
+            /^data:image\/png;base64,/,
+            ''
+        )
+
+        let maskBase64Data = maskImageData.replace(
+            /^data:image\/png;base64,/,
+            ''
+        )
+
+        await callRemoveObject({ image: base64Data, maskImage: maskBase64Data })
+		return
 	}
+
+    const runRemoveBackground = async (data) => {
+        const { image, scale, width, height } = await exportImage({
+            canvaRef: data.canvaRef,
+        })
+        setLoadingImg(image)
+        setIsLoading(true)
+        setLoadingAspectRatio(`${width}/${height}`)
+        const maskData = await drawingComponentRef.current.exportCanvasWithMask()
+        const { imageData } = maskData
+        let base64Data = imageData.replace(
+            /^data:image\/png;base64,/,
+            ''
+        )
+        await callRemoveBackground({ image: base64Data })
+
+        return
+    }
 
 
 	const handleSubmodeChange = (mode) => {
@@ -131,37 +265,46 @@ const CanvasUI = ({
 		}
 	}
 
-    const addObject = async (data) => {
-        const { image, scale, width, height } = await exportImage({
+	const addObject = async (data) => {
+		const { image, scale, width, height } = await exportImage({
 			canvaRef: data.canvaRef,
 		})
 
-        setLoadingImg(image)
+		setLoadingImg(image)
 		setIsLoading(true)
-        setLoadingAspectRatio(`${width}/${height}`)
+		setLoadingAspectRatio(`${width}/${height}`)
 
-        drawingComponentRef.current.exportCanvas()
-        
-        setTimeout(() => {
-            setLoadingImg('')
-            setIsLoading(false)
-            setLoadingAspectRatio('')
-        }, 3000)
+		drawingComponentRef.current.exportCanvasWithMask()
+
+		setTimeout(() => {
+			setLoadingImg('')
+			setIsLoading(false)
+			setLoadingAspectRatio('')
+		}, 3000)
+	}
+
+	useEffect(() => {
+		//when the current tool changes, reset the history, run undo and reset the prompt
+		if (currentTool !== 'fill') {
+			undo()
+		}
+		if (currentTool === 'fill') {
+			setAspectRatio(0)
+		}
+
+		setHistory([])
+		setTextPrompt('')
+	}, [currentTool])
+
+
+    const onCancel = () => {
+        setIsLoading(false)
+        setLoadingImg('')
+        setLoadingAspectRatio('')
     }
 
-    useEffect(() => {
-        //when the current tool changes, reset the history, run undo and reset the prompt
-        if (currentTool !== 'fill') {
-            undo()
-        }
-        if(currentTool === 'fill') {
-            setAspectRatio(0)
-        }
-
-        setHistory([])
-        setTextPrompt('')
-    }, [currentTool])
-
+    console.log(imageDimensions)
+    console.log('loadingImg', loadingImg)
 
 	return (
 		<div>
@@ -178,7 +321,12 @@ const CanvasUI = ({
 				>
 					<LoadingImg
 						img={loadingImg ? loadingImg : ''}
-						aspectRatio={loadingAspectRatio ? loadingAspectRatio : aspectRatio}
+                        onCancel={onCancel}
+						aspectRatio={
+							loadingAspectRatio
+								? loadingAspectRatio
+								: aspectRatio
+						}
 					/>
 				</div>
 			)}
@@ -212,8 +360,8 @@ const CanvasUI = ({
 							setTextPrompt={setTextPrompt}
 							generationText={'fill'}
 							isVisible
-                            isActive
-							isOptional={image ? true : false}
+							isActive
+							placeholder={image ? 'Prompt (Optional)' : 'Prompt'}
 						/>
 					</div>
 					<div style={{ height: 80 }}>
@@ -230,9 +378,7 @@ const CanvasUI = ({
 					<div style={{ height: 80 }}>
 						<RemoveButton
 							runRemove={runRemove}
-							runRemoveBackground={() =>
-								console.log('remove background')
-							}
+							runRemoveBackground={runRemoveBackground}
 							isRemoveBG={subMode === 'background'}
 							canRemove={
 								history.length > 0 || subMode === 'background'
@@ -260,7 +406,8 @@ const CanvasUI = ({
 							setTextPrompt={setTextPrompt}
 							generationText={'Add'}
 							isVisible={image ? true : false}
-                            isActive={history.length > 0}
+							isActive={history.length > 0}
+							placeholder={'Prompt'}
 						/>
 					</div>
 					<div style={{ height: 80 }}>
