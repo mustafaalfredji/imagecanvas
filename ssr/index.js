@@ -10,11 +10,29 @@ const axios = require('axios')
 const sharp = require('sharp')
 const Jimp = require('jimp')
 
+const http = require('http');
+const WebSocket = require('ws');
+
+
 // const { createCanvas, loadImage } = require('canvas')
 
 require('dotenv').config()
 
 const app = express()
+const server = http.createServer(app);
+
+const wss = new WebSocket.Server({ port: 6060 });
+
+// Store the WebSocket connections in the clients map when a connection is established
+wss.on('connection', (ws, req) => {
+  const messageId = req.url.substring(1); // assuming that the messageId is passed in the url like ws://localhost:8080/<messageId>
+  clients.set(messageId, ws);
+
+  ws.on('close', () => {
+    clients.delete(messageId); // Remove the WebSocket connection from the clients map when it's closed
+  });
+});
+
 app.use(cors()) // Use CORS middleware
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
@@ -24,6 +42,8 @@ app.use((req, res, next) => {
 	res.header('Access-Control-Allow-Origin', '*')
 	next()
 })
+
+const clients = new Map();
 
 const openai = new OpenAIApi(
 	new Configuration({
@@ -260,6 +280,88 @@ app.post('/remove-object', async (req, res) => {
 	}
 })
 
+
+app.post('/get-imagine-progress', async (req, res) => {
+	const { messageId } = req.body; // Get messageId from the request body
+	const token = process.env.THE_NEXT_LEG_API_TOKEN;
+  
+	// Call the getProgress function to start getting updates
+	getProgress(messageId, token);
+  
+	res.status(200).send({ success: true });
+  });
+  
+  async function getProgress(messageId, token) {
+	console.log('getProgress', messageId)
+  
+	// sleep for 2 seconds before calling the API
+	await new Promise((resolve) => setTimeout(resolve, 2000));
+	try {
+	  const response = await axios.get(`https://api.thenextleg.io/v2/message/${messageId}?expireMins=4`, {
+		headers: {
+		  'Authorization': `Bearer ${token}`,
+		},
+	  });
+	  
+	  // Find the WebSocket connection in the clients map using messageId
+	  const ws = clients.get(messageId);
+	  if (ws) {
+		// Send the progress to the client through the WebSocket connection
+		ws.send(JSON.stringify(response.data));
+	  }
+  
+	  // If the progress is not 100 and not 'incomplete', call the getProgress function again after a delay
+	  if (response.data.progress !== 100 && response.data.progress !== 'incomplete') {
+		setTimeout(() => getProgress(messageId, token), 4000); // Wait for 5 seconds before calling again
+	  }
+	} catch (error) {
+	  console.log(error);
+	}
+  }
+
+app.post('/imagine', async (req, res) => {
+    const { prompt } = req.body;
+
+    const data = {
+        "msg": prompt + ' --v 5.2',  // from the request body
+    };
+
+	const token = process.env.THE_NEXT_LEG_API_TOKEN
+
+    const config = {
+        method: 'post',
+        url: 'https://api.thenextleg.io/v2/imagine',
+        headers: {
+            'Authorization': `Bearer ${token}`,  // from the request body
+            'Content-Type': 'application/json'
+        },
+        data : data
+    };
+
+    try {
+        const response = await axios.post(config.url, config.data, { headers: config.headers });
+        res.json(response.data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('An error occurred while processing your request');
+    }
+});
+
+
+app.post('/webhook', (req, res) => {
+    const payload = req.body;
+
+    // Broadcast the payload to all connected WebSocket clients
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(payload));
+        }
+    });
+
+    res.status(200).send('Received');
+});
+
+
 app.post('/remove-background', async (req, res) => {
 	try {
 		const { image } = req.body
@@ -422,4 +524,4 @@ app.post('/fill-squares', async (req, res) => {
 })
 
 const port = process.env.PORT || 8080
-app.listen(port, () => console.log(`Server is running on port ${port}`))
+server.listen(port, () => console.log('Server is listening on port ' + port));

@@ -13,6 +13,7 @@ import SimpleCanvas from './SimpleCanvas'
 import LoadingImg from './LoadingImg'
 
 import RemoveButton from './RemoveButton'
+import { aspectRatioGenerator } from '../lib/aspectRatioGenerator'
 
 const callApi = async ({ imageData, squares, scale, prompt }) => {
 	const response = await axios.post('http://localhost:8080/fill-squares', {
@@ -41,6 +42,10 @@ const uploadImage = async ({ image }) => {
 	return data.url
 }
 
+
+
+
+
 const CanvasUI = ({
 	image,
     setImage,
@@ -57,6 +62,8 @@ const CanvasUI = ({
 	const [textPrompt, setTextPrompt] = useState('')
 	const [subMode, setSubmode] = useState('mask')
 	const [history, setHistory] = useState([])
+    const [imagineData, setImagineData] = useState(null)
+    const [messageId, setMessageId] = useState(null)
 
 	const [squares, setSquares] = useState([])
 
@@ -64,6 +71,47 @@ const CanvasUI = ({
 
 	const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+    const callImagineApi = async ({ prompt }) => {
+        const response = await axios.post('http://localhost:8080/imagine', {
+            prompt,
+        })
+    
+        console.log(response.data)
+    
+        const messageId = response.data.messageId
+    
+        const ws = new WebSocket(`ws://localhost:6060/${messageId}`);
+        
+        await axios.post(`http://localhost:8080/get-imagine-progress`, {
+            messageId: messageId,
+        })
+            ws.onopen = () => {
+              console.log('Connected to WebSocket server');
+              // You can also send a message to the server after the connection is established
+              // ws.send('Hello Server!');
+            };
+        
+            ws.onmessage = (message) => {
+              console.log('Received:', message.data);
+              setImagineData(JSON.parse(message.data)); // Assuming the server sends JSON data
+            };
+        
+            ws.onerror = (error) => {
+              console.error('WebSocket error:', error);
+            };
+        
+            ws.onclose = () => {
+              console.log('WebSocket connection closed');
+            };
+        
+            // Clean up the WebSocket connection when the component is unmounted
+            return () => {
+              ws.close();
+            };
+    }
+
+
+      
 	const callRemoveObject = async ({ image, maskImage }) => {
 		const response = await axios.post(
 			'http://localhost:8080/remove-object',
@@ -265,6 +313,19 @@ const CanvasUI = ({
 		}
 	}
 
+    const handleRunImagine = async () => {
+        if (textPrompt.length < 3) alert('Please enter a prompt')
+        if (textPrompt.length > 3) {
+
+            const ar = aspectRatioGenerator(aspectRatio)
+            const modifiedPrompt = textPrompt + ' ' + ar
+            console.log(modifiedPrompt)
+            const imagineRequest = await callImagineApi({ prompt: modifiedPrompt})
+            console.log(imagineRequest)
+        }
+    }
+
+
 	const addObject = async (data) => {
 		const { image, scale, width, height } = await exportImage({
 			canvaRef: data.canvaRef,
@@ -303,8 +364,6 @@ const CanvasUI = ({
         setLoadingAspectRatio('')
     }
 
-    console.log(imageDimensions)
-    console.log('loadingImg', loadingImg)
 
 	return (
 		<div>
@@ -355,7 +414,7 @@ const CanvasUI = ({
 				<div>
 					<div style={{ height: 80 }}>
 						<PromptBox
-							generate={fillGenerate}
+							generate={handleRunImagine}
 							textPrompt={textPrompt}
 							setTextPrompt={setTextPrompt}
 							generationText={'fill'}
