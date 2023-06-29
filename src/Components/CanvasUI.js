@@ -1,370 +1,172 @@
-import { getSquares } from '../lib/get-squares'
-
 import { useState, useRef, useEffect } from 'react'
-import html2canvas from 'html2canvas'
 import axios from 'axios'
 
 import FillControls from './FillControls'
-import EraseControls from './EraseControls'
-import AddControls from './AddControls'
-import CanvasEmpty from './CanvasEmpty'
+// import CanvasEmpty from './CanvasEmpty'
 import PromptBox from './PromptBox'
-import SimpleCanvas from './SimpleCanvas'
-import LoadingImg from './LoadingImg'
+// import SimpleCanvas from './SimpleCanvas'
+import ManageGenerate from './LoadingImg'
 
-import RemoveButton from './RemoveButton'
+import AspectRatioPreview from './AspectRatioPreview'
 import { aspectRatioGenerator } from '../lib/aspectRatioGenerator'
 
-const callApi = async ({ imageData, squares, scale, prompt }) => {
-	const response = await axios.post('http://localhost:8080/fill-squares', {
-		imageData,
-		squares,
-		scale,
-		textPrompt: prompt.length
-			? prompt
-			: 'A realistic, high resolution image in the style award winning 4k photography, and images from instagram',
-	})
-
-	const data = response.data
-
-	return data
+const imagineDataPlaceholder = {
+	progress: 0,
+	response: {
+		imageUrls: ['', '', '', ''],
+		buttons: ['U1', '', 'V2', ''],
+	},
+	progressImageUrl: '',
 }
 
-const uploadImage = async ({ image }) => {
-	const response = await axios.post('http://localhost:8080/upload-image', {
-		image,
-	})
+const imagineDataPlaceholder2 = {"progress":100,"response":{"createdAt":"2023-06-27T22:43:38.647Z","originatingMessageId":"X4RV7JBTul2gNflWbejC","buttons":["U1","U2","U3","U4","V1","V2","V3","V4"],"imageUrl":"https://cdn.discordapp.com/attachments/1072518361050775622/1123383167294910588/musti_A_realistic_photo_of_a_well-organized_fitness_meal_prep_s_93c14938-a441-42ff-9b3c-92a85cb5c375.webp","imageUrls":["https://cdn.midjourney.com/93c14938-a441-42ff-9b3c-92a85cb5c375/0_0.png","https://cdn.midjourney.com/93c14938-a441-42ff-9b3c-92a85cb5c375/0_1.png","https://cdn.midjourney.com/93c14938-a441-42ff-9b3c-92a85cb5c375/0_2.png","https://cdn.midjourney.com/93c14938-a441-42ff-9b3c-92a85cb5c375/0_3.png"],"responseAt":"2023-06-27T22:43:38.896Z","description":"","type":"imagine","content":"A realistic photo of a well-organized fitness meal prep, spread across a sleek, wooden kitchen table. Diverse colors from fresh vegetables, lean proteins, and whole grains. Natural, soft lighting enhances the vivid hues. Top-down, high-definition view, 4K, hyper-realistic in the style of realism. --ar 9:16 --v 5.2","buttonMessageId":"Ug3iBqmkXrrhr2MD1oPQ"}}
 
-
-	const data = response.data
-
-	console.log(data)
-	return data.url
-}
-
-
-
-
+const imagineDataPlaceholder3 = {
+	progress: 100,
+	response: {
+	  createdAt: '2023-06-27T23:10:30.781Z',
+	  originatingMessageId: 'mYZjtKsJCbQwnRqvsLh3',
+	  ref: '',
+	  buttons: [
+		'🪄 Vary (Strong)',
+		'🪄 Vary (Subtle)',
+		'🔍 Zoom Out 2x',
+		'🔍 Zoom Out 1.5x',
+		'🔍 Custom Zoom',
+		'↔️ Make Square',
+		'Web'
+	  ],
+	  imageUrl: 'https://cdn.discordapp.com/attachments/1072518361050775622/1123389929209221140/musti_A_realistic_photo_of_a_well-organized_fitness_meal_prep_s_4eb260f1-d026-4dbc-b306-21d7f85263cb.png',
+	  imageUrls: [
+		'https://cdn.midjourney.com/4eb260f1-d026-4dbc-b306-21d7f85263cb/0_0.png',
+		'https://cdn.midjourney.com/4eb260f1-d026-4dbc-b306-21d7f85263cb/0_1.png',
+		'https://cdn.midjourney.com/4eb260f1-d026-4dbc-b306-21d7f85263cb/0_2.png',
+		'https://cdn.midjourney.com/4eb260f1-d026-4dbc-b306-21d7f85263cb/0_3.png'
+	  ],
+	  responseAt: '2023-06-27T23:10:30.999Z',
+	  description: '',
+	  type: 'button',
+	  content: 'A realistic photo of a well-organized fitness meal prep, spread across a sleek, wooden kitchen table. Diverse colors from fresh vegetables, lean proteins, and whole grains. Natural, soft lighting enhances the vivid hues. Top-down, high-definition view, 4K, hyper-realistic in the style of realism. --ar 9:16 --v 5.2',
+	  buttonMessageId: 'k9uKHtF6Ods7fnSwlrTA'
+	}
+  }
 
 const CanvasUI = ({
-	image,
-    setImage,
-	clickUpload,
-	currentTool,
 	workingAreaHeight,
-	imageDimensions,
-    setImageDimensions,
 }) => {
 	const [aspectRatio, setAspectRatio] = useState(0)
 	const [isLoading, setIsLoading] = useState(false)
-	const [loadingAspectRatio, setLoadingAspectRatio] = useState('9/16')
-	const [loadingImg, setLoadingImg] = useState('')
 	const [textPrompt, setTextPrompt] = useState('')
-	const [subMode, setSubmode] = useState('mask')
-	const [history, setHistory] = useState([])
-    const [imagineData, setImagineData] = useState(null)
-    const [messageId, setMessageId] = useState(null)
-
-	const [squares, setSquares] = useState([])
+	const [imagineData, setImagineData] = useState(imagineDataPlaceholder)
+	const [loadingType, setLoadingType] = useState('')
 
 	const drawingComponentRef = useRef(null)
 
 	const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-    const callImagineApi = async ({ prompt }) => {
-        const response = await axios.post('http://localhost:8080/imagine', {
-            prompt,
-        })
-    
-        console.log(response.data)
-    
-        const messageId = response.data.messageId
-    
-        const ws = new WebSocket(`ws://localhost:6060/${messageId}`);
-        
-        await axios.post(`http://localhost:8080/get-imagine-progress`, {
-            messageId: messageId,
-        })
-            ws.onopen = () => {
-              console.log('Connected to WebSocket server');
-              // You can also send a message to the server after the connection is established
-              // ws.send('Hello Server!');
-            };
-        
-            ws.onmessage = (message) => {
-              console.log('Received:', message.data);
-              setImagineData(JSON.parse(message.data)); // Assuming the server sends JSON data
-            };
-        
-            ws.onerror = (error) => {
-              console.error('WebSocket error:', error);
-            };
-        
-            ws.onclose = () => {
-              console.log('WebSocket connection closed');
-            };
-        
-            // Clean up the WebSocket connection when the component is unmounted
-            return () => {
-              ws.close();
-            };
-    }
+	const callImagineApi = async ({ prompt }) => {
+		const response = await axios.post('http://localhost:8080/imagine', {
+			prompt,
+		})
 
+		console.log(response.data)
 
-      
-	const callRemoveObject = async ({ image, maskImage }) => {
-		const response = await axios.post(
-			'http://localhost:8080/remove-object',
-			{
-				image,
-				maskImage,
-			}
-		)
+		sleep(2000)
+		const messageId = response.data.messageId
+		getMessageProgress({ messageId })
+	}
 
-		const getUrl = response.data.getUrl
+	const callButtonApi = async ({ buttonIndex, action, expectedButtonString }) => {
+		const response = await axios.post('http://localhost:8080/press-button', {
+			buttonIndex,
+			action,
+			expectedButtonString,
+			buttonMessageId: imagineData.response.buttonMessageId,
+			buttons: imagineData.response.buttons,
+		})
 
-        let newPrediction = { status: 'running' }
-		while (
-			newPrediction.status !== 'succeeded' ||
-			newPrediction.status !== 'failed'
-		) {
-			await sleep(1000)
-			const response = await axios.post(
-				'http://localhost:8080/get-prediction',
-				{
-					getUrl: getUrl,
+		sleep(2000)
+		setImagineData(imagineDataPlaceholder)
+		if(action === 'upscale') {
+			setLoadingType('upscale')
+		} 
+
+		if(action === 'variant') {
+			setLoadingType('variant')
+		}
+
+		getMessageProgress({ messageId: response.data.data.messageId })
+	}
+
+	console.log(imagineData)
+
+	const getMessageProgress = async ({ messageId }) => {
+
+		const ws = new WebSocket(`ws://localhost:6060/${messageId}`)
+
+		await axios.post(`http://localhost:8080/get-imagine-progress`, {
+			messageId: messageId,
+		})
+		ws.onopen = () => {
+			console.log('Connected to WebSocket server')
+			// You can also send a message to the server after the connection is established
+			// ws.send('Hello Server!');
+		}
+
+		ws.onmessage = (message) => {
+			console.log('Received:', message.data)
+			const data = JSON.parse(message.data)
+			let modifiedData = {}
+			if (data.progress === 100) {
+				modifiedData = {
+					...data,
 				}
-			)
-        
-            newPrediction = response.data
-            if (newPrediction.output && newPrediction.output.length) { break }
+			} else {
+				modifiedData = {
+					...data,
+					response: {
+						...data.response,
+						imageUrls: ['', '', '', ''],
+					},
+				}
+			}
+
+			setImagineData(modifiedData) // Assuming the server sends JSON data
 		}
-        if (newPrediction.output && newPrediction.output.length) {
-            setIsLoading(false)
-            setImage(newPrediction.output)
-        }
+
+		ws.onerror = (error) => {
+			console.error('WebSocket error:', error)
+		}
+
+		ws.onclose = () => {
+			console.log('WebSocket connection closed')
+		}
+
+		// Clean up the WebSocket connection when the component is unmounted
+		return () => {
+			ws.close()
+		}
 	}
 
-    const callRemoveBackground = async ({ image }) => {
-        const response = await axios.post(
-            'http://localhost:8080/remove-background',
-            {
-                image,
-            }
-        )
+	const onCancel = () => {
+		setIsLoading(false)
+	}
 
-        const getUrl = response.data.getUrl
-
-        let newPrediction = { status: 'running' }
-        while (
-            newPrediction.status !== 'succeeded' ||
-            newPrediction.status !== 'failed'
-        ) {
-            await sleep(1000)
-            const response = await axios.post(
-                'http://localhost:8080/get-prediction',
-                {
-                    getUrl: getUrl,
-                }
-            )
-
-            newPrediction = response.data
-            if (newPrediction.output && newPrediction.output.length) { break }
-        }
-        if (newPrediction.output && newPrediction.output.length) {
-
-            console.log('newPrediction.output', newPrediction.output)
-            // reupload newPrediction.output  and get new url
-            setImage(newPrediction.output)
-            setLoadingImg(newPrediction.output)
-
-            sleep(2000)
-            setIsLoading(false)
-        }
-    }
-
-	const fillGenerate = async (data) => {
-		if (!data) return console.log('no data')
-
-		// const { image, scale } = await exportImage({
-		// 	canvaRef: data.canvaRef,
-		// })
-
-        const canvasData = await drawingComponentRef.current.exportCanvas()
-
-
-        const { image, scale } = canvasData
-
-        // console.log(image)
-
-		const newSquares = getSquares({
-			ratioHeight: data.data.ratioHeight,
-			ratioWidth: data.data.ratioWidth,
-			canva: data.data.canva,
-			image: data.data.image,
-			squareSize: data.data.squareSize,
-		})
-
-
-		setLoadingImg(image)
-        setLoadingAspectRatio(data.data.ratioWidth + '/' + data.data.ratioHeight)
+	const handleRunImagine = async () => {
+		if (textPrompt.length < 5) {
+			alert('Please enter a prompt longer than 5 characters')
+			return
+		}
 		setIsLoading(true)
-
-		const newImg = await callApi({
-			imageData: image,
-			squares: newSquares,
-			scale: scale,
-			prompt: textPrompt,
-		})
-
-		setLoadingImg(newImg.url)
-        setImageDimensions(newImg.dimensions)
-        setImage(newImg.url)
-        setTimeout(() => {
-            setIsLoading(false)
-        }, 2000)
+		const newPrompt = textPrompt + ' ' + aspectRatioGenerator(aspectRatio)
+		callImagineApi({ prompt: newPrompt })
 	}
 
-	// https://usefulangle.com/post/353/javascript-canvas-image-upload
-	const exportImage = ({ canvaRef }) =>
-		new Promise((resolve, reject) => {
-			const element = canvaRef
-
-			const canvasWidth = element.clientWidth
-			const canvasHeight = element.clientHeight
-
-			console.log(canvasWidth, canvasHeight)
-
-			const scale =
-				1024 / (canvasWidth < canvasHeight ? canvasWidth : canvasHeight)
-			html2canvas(element, {
-				backgroundColor: null,
-				logging: true,
-				width: canvasWidth,
-				height: canvasHeight,
-				scale,
-			}).then((canvas) => {
-				// get the image data
-				const image = canvas.toDataURL('image/png')
-				resolve({
-					image,
-					scale,
-					height: canvasHeight,
-					width: canvasWidth,
-				})
-			})
-		})
-
-	const undo = () => {
-		if (history.length < 1) return // Don't undo into an empty state
-		drawingComponentRef.current.restoreImage() // Restore
+	const handleRunButton = async (buttonIndex, action, expectedButtonString) => {
+		callButtonApi({ buttonIndex, action, expectedButtonString })
 	}
 
-    const runRemove = async (data) => {
-        const { image, scale, width, height } = await exportImage({
-			canvaRef: data.canvaRef,
-		})
-		setLoadingImg(image)
-		setIsLoading(true)
-		setLoadingAspectRatio(`${width}/${height}`)
-
-        const canvasData = await drawingComponentRef.current.exportCanvasWithMask()
-
-
-        const { imageData, maskImageData } = canvasData
-
-        let base64Data = imageData.replace(
-            /^data:image\/png;base64,/,
-            ''
-        )
-
-        let maskBase64Data = maskImageData.replace(
-            /^data:image\/png;base64,/,
-            ''
-        )
-
-        await callRemoveObject({ image: base64Data, maskImage: maskBase64Data })
-		return
-	}
-
-    const runRemoveBackground = async (data) => {
-        const { image, scale, width, height } = await exportImage({
-            canvaRef: data.canvaRef,
-        })
-        setLoadingImg(image)
-        setIsLoading(true)
-        setLoadingAspectRatio(`${width}/${height}`)
-        const maskData = await drawingComponentRef.current.exportCanvasWithMask()
-        const { imageData } = maskData
-        let base64Data = imageData.replace(
-            /^data:image\/png;base64,/,
-            ''
-        )
-        await callRemoveBackground({ image: base64Data })
-
-        return
-    }
-
-
-	const handleSubmodeChange = (mode) => {
-		setSubmode(mode)
-		if (mode === 'background') {
-			undo()
-		}
-	}
-
-    const handleRunImagine = async () => {
-        if (textPrompt.length < 3) alert('Please enter a prompt')
-        if (textPrompt.length > 3) {
-
-            const ar = aspectRatioGenerator(aspectRatio)
-            const modifiedPrompt = textPrompt + ' ' + ar
-            console.log(modifiedPrompt)
-            const imagineRequest = await callImagineApi({ prompt: modifiedPrompt})
-            console.log(imagineRequest)
-        }
-    }
-
-
-	const addObject = async (data) => {
-		const { image, scale, width, height } = await exportImage({
-			canvaRef: data.canvaRef,
-		})
-
-		setLoadingImg(image)
-		setIsLoading(true)
-		setLoadingAspectRatio(`${width}/${height}`)
-
-		drawingComponentRef.current.exportCanvasWithMask()
-
-		setTimeout(() => {
-			setLoadingImg('')
-			setIsLoading(false)
-			setLoadingAspectRatio('')
-		}, 3000)
-	}
-
-	useEffect(() => {
-		//when the current tool changes, reset the history, run undo and reset the prompt
-		if (currentTool !== 'fill') {
-			undo()
-		}
-		if (currentTool === 'fill') {
-			setAspectRatio(0)
-		}
-
-		setHistory([])
-		setTextPrompt('')
-	}, [currentTool])
-
-
-    const onCancel = () => {
-        setIsLoading(false)
-        setLoadingImg('')
-        setLoadingAspectRatio('')
-    }
-
-
+	console.log('buttons', imagineData.response.buttons)
 	return (
 		<div>
 			{isLoading && (
@@ -378,108 +180,57 @@ const CanvasUI = ({
 						zIndex: 122,
 					}}
 				>
-					<LoadingImg
-						img={loadingImg ? loadingImg : ''}
-                        onCancel={onCancel}
-						aspectRatio={
-							loadingAspectRatio
-								? loadingAspectRatio
-								: aspectRatio
-						}
+					<ManageGenerate
+						handleRunButton={handleRunButton}
+						buttons={imagineData.response.buttons || []}
+						workingHeight={workingAreaHeight - 240}
+						loadingImages={imagineData.response.imageUrls || []}
+						onCancel={onCancel}
+						progress={imagineData.progress === 0 ? 10 : imagineData.progress}
+						aspectRatio={aspectRatio}
+						isFinished={imagineData.progress === 100}
+						progressImageUrl={imagineData.progressImageUrl || ''}
+						loadingType={loadingType}
+						upscaleImage={imagineData.response.imageUrl}
 					/>
 				</div>
 			)}
-			<div style={{ height: workingAreaHeight - 160 }}>
-				{image ? (
+
+			<AspectRatioPreview
+				aspectRatio={aspectRatio}
+				workingHeight={workingAreaHeight - 160}
+			/>
+			{/* {image ? (
 					<SimpleCanvas
 						image={image}
-						currentTool={currentTool}
+						currentTool={'fill'}
 						aspectRatio={aspectRatio}
 						workingHeight={workingAreaHeight - 160}
 						imageDimensions={imageDimensions}
-						squares={squares}
-						setHistory={setHistory}
-						eraseMode={subMode}
 						ref={drawingComponentRef}
 					/>
 				) : (
-					<CanvasEmpty
-						clickUpload={clickUpload}
-						aspectRatio={aspectRatio}
-						workingHeight={workingAreaHeight - 160}
+				)} */}
+			<div>
+				<div style={{ height: 80 }}>
+					<PromptBox
+						generate={handleRunImagine}
+						textPrompt={textPrompt}
+						setTextPrompt={setTextPrompt}
+						generationText={'fill'}
+						isVisible
+						isActive
+						placeholder={'Prompt'}
 					/>
-				)}
+				</div>
+				<div style={{ height: 80 }}>
+					<FillControls
+						isVisible={true}
+						currentCanvas={aspectRatio}
+						setCurrentCanvas={setAspectRatio}
+					/>
+				</div>
 			</div>
-			{currentTool === 'fill' && (
-				<div>
-					<div style={{ height: 80 }}>
-						<PromptBox
-							generate={handleRunImagine}
-							textPrompt={textPrompt}
-							setTextPrompt={setTextPrompt}
-							generationText={'fill'}
-							isVisible
-							isActive
-							placeholder={image ? 'Prompt (Optional)' : 'Prompt'}
-						/>
-					</div>
-					<div style={{ height: 80 }}>
-						<FillControls
-							isVisible={true}
-							currentCanvas={aspectRatio}
-							setCurrentCanvas={setAspectRatio}
-						/>
-					</div>
-				</div>
-			)}
-			{currentTool === 'erase' && (
-				<div>
-					<div style={{ height: 80 }}>
-						<RemoveButton
-							runRemove={runRemove}
-							runRemoveBackground={runRemoveBackground}
-							isRemoveBG={subMode === 'background'}
-							canRemove={
-								history.length > 0 || subMode === 'background'
-							}
-							isVisible={image ? true : false}
-						/>
-					</div>
-					<div style={{ height: 80 }}>
-						<EraseControls
-							isVisible={image ? true : false}
-							undo={undo}
-							hasUndo={history.length > 0}
-							eraseMode={subMode}
-							setEraseMode={handleSubmodeChange}
-						/>
-					</div>
-				</div>
-			)}
-			{currentTool === 'add' && (
-				<div>
-					<div style={{ height: 80 }}>
-						<PromptBox
-							generate={addObject}
-							textPrompt={textPrompt}
-							setTextPrompt={setTextPrompt}
-							generationText={'Add'}
-							isVisible={image ? true : false}
-							isActive={history.length > 0}
-							placeholder={'Prompt'}
-						/>
-					</div>
-					<div style={{ height: 80 }}>
-						<AddControls
-							isVisible={image ? true : false}
-							undo={undo}
-							hasUndo={history.length > 0}
-							subMode={subMode}
-							setSubmode={handleSubmodeChange}
-						/>
-					</div>
-				</div>
-			)}
 		</div>
 	)
 }
