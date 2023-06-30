@@ -55,9 +55,9 @@ const CanvasUI = ({
 	workingAreaHeight,
 }) => {
 	const [aspectRatio, setAspectRatio] = useState(0)
-	const [isLoading, setIsLoading] = useState(false)
+	const [isLoading, setIsLoading] = useState(true)
 	const [textPrompt, setTextPrompt] = useState('')
-	const [imagineData, setImagineData] = useState(imagineDataPlaceholder)
+	const [imagineData, setImagineData] = useState(imagineDataPlaceholder2)
 	const [loadingType, setLoadingType] = useState('')
 
 	const drawingComponentRef = useRef(null)
@@ -148,8 +148,10 @@ const CanvasUI = ({
 		}
 	}
 
-	const onCancel = () => {
+
+	const onClose = () => {
 		setIsLoading(false)
+		setLoadingType('')
 	}
 
 	const handleRunImagine = async () => {
@@ -166,7 +168,6 @@ const CanvasUI = ({
 		callButtonApi({ buttonIndex, action, expectedButtonString })
 	}
 
-	console.log('buttons', imagineData.response.buttons)
 	return (
 		<div>
 			{isLoading && (
@@ -183,15 +184,15 @@ const CanvasUI = ({
 					<ManageGenerate
 						handleRunButton={handleRunButton}
 						buttons={imagineData.response.buttons || []}
-						workingHeight={workingAreaHeight - 240}
+						workingHeight={loadingType === 'upscale' ? workingAreaHeight - 280 : workingAreaHeight - 240}
 						loadingImages={imagineData.response.imageUrls || []}
-						onCancel={onCancel}
 						progress={imagineData.progress === 0 ? 10 : imagineData.progress}
 						aspectRatio={aspectRatio}
 						isFinished={imagineData.progress === 100}
 						progressImageUrl={imagineData.progressImageUrl || ''}
 						loadingType={loadingType}
 						upscaleImage={imagineData.response.imageUrl}
+						onClose={onClose}
 					/>
 				</div>
 			)}

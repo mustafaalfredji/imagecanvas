@@ -3,7 +3,11 @@ import SwipableViews from 'react-swipeable-views'
 
 import { useEffect, useState } from 'react'
 
-import GridImg from '../resources/grid.webp'
+// import GridImg from '../resources/grid.webp'
+
+import DownloadIcon from '../resources/downloadIcon'
+import VariantIcon from '../resources/variantIcon'
+import ArrowRightIcon from '../resources/arrowRight'
 
 import './loadingImg.css'
 
@@ -49,10 +53,10 @@ const styles = {
 	wrapper: {
 		width: '100%',
 		display: 'flex',
-		justifyContent: 'center',
+		justifyContent: 'flex-start',
 		alignItems: 'center',
 		height: '100%',
-		background: 'rgba(0,0,0,0.7)',
+		background: 'rgba(0,0,0,0.5)',
 		flexDirection: 'column',
 	},
 	innerWrapper: {
@@ -62,6 +66,7 @@ const styles = {
 		backgroundImage:
 			'url("https://www.transparenttextures.com/patterns/az-subtle.png")',
 		zIndex: 30,
+		marginTop: 20,
 	},
 	background: {
 		width: '100%',
@@ -98,25 +103,36 @@ const styles = {
 		position: 'relative',
 	},
 	buttonGroup: {
-		marginTop: 20,
+		zIndex: 12,
+		width: 'calc(100% - 40px)',
+		borderTopLeftRadius: 10,
+		borderTopRightRadius: 10,
 		display: 'grid',
 		gridTemplateColumns: '1fr 1fr',
-		gridTemplateRows: '1fr 1fr',
-		gridGap: 12,
-		zIndex: 12,
-		width: window.innerWidth - 40,
-		justifyContent: 'center',
-		alignItems: 'center',
+		gridTemplateRows: '1fr 1ft',
+		gridGap: 16,
 	},
-	button: {
+	buttonActive: {
 		height: 50,
 		display: 'flex',
 		justifyContent: 'center',
 		alignItems: 'center',
-		background: '#F5F9FF',
+		width: 'calc(100% - 40px)',
+		background: 'linear-gradient(325deg, #04ECFD 0%, #2772FF 100%)',
 		borderRadius: 10,
-		color: '#2772ff',
+		color: '#fff',
 		fontWeight: 600,
+		marginTop: 16,
+	},
+	buttonHalf: {
+		height: 50,
+		background: 'linear-gradient(180deg, #51687E 0%, #39495A 100%)',
+		borderRadius: 10,
+		color: '#fff',
+		fontWeight: 500,
+		display: 'flex',
+		justifyContent: 'center',
+		alignItems: 'center',
 	},
 	indexCircle: {
 		height: 10,
@@ -131,6 +147,35 @@ const styles = {
 		marginTop: 20,
 		zIndex: 12,
 	},
+	buttonsWrapper: {
+		zIndex: 12,
+		width: '100%',
+		paddingLeft: 20,
+		paddingRight: 20,
+		borderTopLeftRadius: 16,
+		borderTopRightRadius: 16,
+		position: 'absolute',
+		bottom: 0,
+		left: 0,
+		right: 0,
+		background: '#19232F',
+		paddingBottom: 20,
+		paddingTop: 20,
+	},
+	close: {
+		position: 'absolute',
+		top: 20,
+		left: 20,
+		zIndex: 40,
+		height: 40,
+		width: 40,
+		display: 'flex',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderRadius: 24,
+		background: 'rgba(255,255,255)',
+		boxShadow: '0px 0px 15px rgba(0, 0, 0, 0.2)',
+	}
 }
 
 const ManageGenerate = ({
@@ -145,12 +190,11 @@ const ManageGenerate = ({
 	loadingType,
 	buttons,
 	upscaleImage,
+	onClose,
 }) => {
 	const [caption, setCaption] = useState('')
 	const [animationClass, setAnimationClass] = useState('')
 	const [index, setIndex] = useState(0)
-
-	console.log(loadingImages)
 
 	const decideDimensions = () => {
 		const ratioInfo = aspectRatioGenerator(aspectRatio)
@@ -210,17 +254,22 @@ const ManageGenerate = ({
 	}
 
 	const decideImage = (img) => {
-		if (loadingType === 'upscale') {
-			console.log(upscaleImage)
-			return upscaleImage
-		}
+		if (loadingType === 'upscale') return upscaleImage
 		if (isFinished) return img
 		if (progressImageUrl.length > 0) return progressImageUrl
 	}
 
-	console.log(loadingType)
+	function filterButtons(buttonsArray) {
+		return buttonsArray.filter(
+			(button) => button !== 'Web' && button !== '🔍 Custom Zoom'
+		)
+	}
+
+	const filteredButtons = filterButtons(buttons)
+
 	return (
 		<div style={styles.wrapper}>
+			<div style={styles.close} onClick={onClose} />
 			{loadingType === 'upscale' ? (
 				<div
 					key={index}
@@ -257,7 +306,7 @@ const ManageGenerate = ({
 					onChangeIndex={(index) => setIndex(index)}
 					style={{
 						width: window.innerWidth,
-						height: workingHeight,
+						paddingTop: 20,
 						zIndex: 10,
 					}}
 				>
@@ -320,48 +369,52 @@ const ManageGenerate = ({
 
 			{isFinished ? (
 				loadingType === 'upscale' ? (
-					<div style={styles.buttonGroup}>
-						{buttons.map((button) => (
-
-						<div
-							style={styles.button}
-							onClick={() =>
-								handleRunButton(
-									index,
-									'variant',
-									button
-								)
-							}
-						>
-							{button}
+					<div style={styles.buttonsWrapper}>
+						<div style={{...styles.buttonGroup, marginTop: 16}}>
+							{filteredButtons.map((button) => (
+								<div
+									style={styles.buttonHalf}
+									onClick={() =>
+										handleRunButton(index, 'variant', button)
+									}
+								>
+									{button}
+								</div>
+							))}
 						</div>
-						))
-						}
 					</div>
 				) : (
-					<div style={styles.buttonGroup}>
-						<div
-							style={styles.button}
-							onClick={() => console.log('save image', index)}
-						>
-							{' '}
-							Save{' '}
+					<div style={styles.buttonsWrapper}>
+						<div style={styles.buttonGroup}>
+							<div
+								style={styles.buttonHalf}
+								onClick={() =>
+									handleRunButton(
+										index,
+										'variant',
+										`V${index + 1}`
+									)
+								}
+							>
+								<VariantIcon />
+								<span style={{ marginLeft: 8}}>Variant</span>
+							</div>
+							<div
+								style={styles.buttonHalf}
+								onClick={() =>
+									handleRunButton(
+										index,
+										'variant',
+										`V${index + 1}`
+									)
+								}
+							>
+								<DownloadIcon />
+								<span style={{ marginLeft: 8}} > Save</span>
+							</div>
 						</div>
 						<div
-							style={styles.button}
-							onClick={() =>
-								handleRunButton(
-									index,
-									'variant',
-									`V${index + 1}`
-								)
-							}
-						>
-							{' '}
-							Variant{' '}
-						</div>
-						<div
-							style={styles.button}
+							style={styles.buttonActive}
 							onClick={() =>
 								handleRunButton(
 									index,
@@ -370,8 +423,7 @@ const ManageGenerate = ({
 								)
 							}
 						>
-							{' '}
-							Upscale{' '}
+							Select image {index + 1}
 						</div>
 					</div>
 				)
