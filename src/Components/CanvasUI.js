@@ -55,9 +55,9 @@ const CanvasUI = ({
 	workingAreaHeight,
 }) => {
 	const [aspectRatio, setAspectRatio] = useState(0)
-	const [isLoading, setIsLoading] = useState(true)
+	const [isLoading, setIsLoading] = useState(false)
 	const [textPrompt, setTextPrompt] = useState('')
-	const [imagineData, setImagineData] = useState(imagineDataPlaceholder2)
+	const [imagineData, setImagineData] = useState(imagineDataPlaceholder)
 	const [loadingType, setLoadingType] = useState('')
 
 	const drawingComponentRef = useRef(null)

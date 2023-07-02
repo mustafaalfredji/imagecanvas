@@ -172,7 +172,7 @@ app.post('/imagine', async (req, res) => {
 	const { prompt } = req.body
 
 	const data = {
-		msg: prompt + ' --v 5.2', // from the request body
+		msg: prompt + ' --v 5.2 --style raw --c 10 --stylize 1000', // from the request body
 	}
 
 	const token = process.env.THE_NEXT_LEG_API_TOKEN
