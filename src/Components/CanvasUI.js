@@ -152,6 +152,7 @@ const CanvasUI = ({
 	const onClose = () => {
 		setIsLoading(false)
 		setLoadingType('')
+		setImagineData(imagineDataPlaceholder)
 	}
 
 	const handleRunImagine = async () => {

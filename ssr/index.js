@@ -128,7 +128,7 @@ app.post('/get-imagine-progress', async (req, res) => {
 })
 
 async function getProgress(messageId, token, retries) {
-	const maxRetries = 3 // Set the maximum number of retries
+	const maxRetries = 5 // Set the maximum number of retries
 	try {
 		const response = await axios.get(
 			`https://api.thenextleg.io/v2/message/${messageId}?expireMins=12`,
@@ -153,7 +153,7 @@ async function getProgress(messageId, token, retries) {
 			response.data.progress !== 100 &&
 			response.data.progress !== 'incomplete'
 		) {
-			setTimeout(() => getProgress(messageId, token, 0), 5000) // Reset retries counter if operation was successful
+			setTimeout(() => getProgress(messageId, token, 0), 3000) // Reset retries counter if operation was successful
 		}
 	} catch (error) {
 		console.log(error)
@@ -164,6 +164,7 @@ async function getProgress(messageId, token, retries) {
 		} else {
 			// If the maximum number of retries has been reached, log the error and stop retrying
 			console.log('Maximum retries reached. Stopping attempts.')
+			
 		}
 	}
 }
